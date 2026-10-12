@@ -1,0 +1,23 @@
+{
+  "name": "design-desk",
+  "version": "0.1.0",
+  "private": true,
+  "description": "设计台：个人品牌设计工作流（本机运行）",
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 4180",
+    "build": "next build --webpack",
+    "start": "next start --hostname 127.0.0.1 --port 4180",
+    "check": "tsc --noEmit && next build --webpack"
+  },
+  "dependencies": {
+    "next": "16.3.3",
+    "react": "19.2.8",
+    "react-dom": "19.2.8"
+  },
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "typescript": "^5.9.3"
+  }
+}
