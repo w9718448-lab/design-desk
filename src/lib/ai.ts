@@ -45,7 +45,7 @@ export async function modelStatus() {
 
 type Content = string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;
 
-async function chat(id: ProviderId, model: string, system: string, user: Content, maxTokens: number) {
+async function chat(id: ProviderId, model: string, system: string, user: Content, maxTokens: number, json = true) {
   const key = await getSecret(id);
   const provider = providers[id];
   const baseUrl = (id === "qwen" && process.env.DESIGN_DESK_QWEN_BASE_URL) || provider.baseUrl;
@@ -55,7 +55,7 @@ async function chat(id: ProviderId, model: string, system: string, user: Content
     body: JSON.stringify({
       model,
       max_tokens: maxTokens,
-      response_format: { type: "json_object" },
+      ...(json ? { response_format: { type: "json_object" } } : {}),
       messages: [{ role: "system", content: system }, { role: "user", content: user }],
     }),
     signal: AbortSignal.timeout(90_000),
@@ -87,6 +87,6 @@ export async function aiVisionJson<T>(system: string, text: string, imageDataUrl
   const result = await chat("qwen", providers.qwen.vision, system, [
     { type: "image_url", image_url: { url: imageDataUrl } },
     { type: "text", text },
-  ], maxTokens);
+  ], maxTokens, false);
   return { data: parseJson<T>(result.content), model: result.model };
 }

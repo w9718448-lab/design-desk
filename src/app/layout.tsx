@@ -1,14 +1,17 @@
 import type { Metadata } from "next";
 import "./globals.css";
-import { Nav } from "@/components/nav";
+import { SidebarNav } from "@/components/sidebar-nav";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { currentStep, readStore } from "@/lib/store";
 
 export const metadata: Metadata = { title: "设计台", description: "个人品牌设计工作流" };
+export const dynamic = "force-dynamic";
 
 // 首次打开跟随系统外观，之后记住你的选择；在页面渲染前设置，避免闪一下白屏。
 const themeScript = `try{var t=localStorage.getItem("dd-theme");if(t!=="dark"&&t!=="light"){t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="dark"}`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
+  const projects = readStore().briefs.map((brief) => ({ id: brief.id, title: brief.title, done: brief.stepsDone, current: currentStep(brief) }));
   return (
     <html lang="zh-CN" data-theme="dark" suppressHydrationWarning>
       <head>
@@ -23,13 +26,8 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               </span>
               <span className="brand-copy"><strong>设计台</strong><small>DESIGN DESK</small></span>
             </div>
-            <Nav />
+            <SidebarNav projects={projects} />
             <div className="sidebar-foot">
-              <div className="boundary">
-                <span className="eyebrow">分工</span>
-                <p><b>AI</b> 整理需求、找漏项、按规则挑问题</p>
-                <p><b>你</b> 去问人、做判断、改稿、对外发送</p>
-              </div>
               <ThemeToggle />
             </div>
           </aside>

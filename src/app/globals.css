@@ -367,3 +367,134 @@ input[type="file"]::file-selector-button {
   .stage-board, .rule-columns, .two-col, .roles, .form-row { grid-template-columns: 1fr; }
   .brief-field { grid-template-columns: 1fr; }
 }
+
+/* ---------- M2：项目步骤导航 ---------- */
+.nav-group { margin: 18px 12px 6px; font-family: var(--mono); font-size: var(--fs-caption); letter-spacing: 0.14em; color: var(--muted); text-transform: uppercase; }
+.nav-icon { font-size: var(--fs-meta); opacity: 0.7; }
+.project-steps { display: grid; gap: 4px; margin-top: 6px; padding: 4px 0 8px; }
+.project-name { padding: 0 12px 6px; font-size: var(--fs-subtitle); line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.project-steps ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; position: relative; }
+.project-steps ol::before { content: ""; position: absolute; left: 25px; top: 18px; bottom: 18px; width: 1px; background: var(--line-strong); }
+.project-steps li a { display: flex; gap: 12px; align-items: center; padding: 8px 12px; }
+.step-dot {
+  position: relative; z-index: 1; flex: none; width: 28px; height: 28px; border-radius: 50%;
+  display: grid; place-items: center; font-family: var(--mono); font-size: var(--fs-caption);
+  background: var(--surface-solid); border: 1px solid var(--line-strong); color: var(--muted);
+}
+.step-dot svg { width: 14px; height: 14px; }
+.step-text { display: grid; line-height: 1.3; }
+.step-text small { color: var(--muted); font-weight: var(--fw-regular); }
+.project-steps a.is-done .step-dot { background: var(--ok-bg); border-color: color-mix(in srgb, var(--ok-ink) 50%, transparent); color: var(--ok-ink); }
+.project-steps a.is-current .step-dot { background: var(--grad); border-color: transparent; color: #fff; box-shadow: var(--glow-shadow); }
+.project-steps a.is-current .step-text > span { color: var(--ink); }
+.sidebar { overflow-y: auto; }
+
+.step-head h1 { font-size: var(--fs-display); }
+.step-foot { display: flex; justify-content: flex-end; padding-top: 4px; }
+.step-foot-row { display: flex; gap: 14px; align-items: center; flex-wrap: wrap; }
+.step-track { display: flex; gap: 4px; }
+.step-track i { flex: 1; height: 4px; border-radius: 4px; background: var(--surface-2); }
+.step-track i.is-done { background: var(--ok-ink); opacity: 0.7; }
+.step-track i.is-current { background: var(--grad); }
+.two-col.even { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+.form-ok { color: var(--ok-ink); background: var(--ok-bg); padding: 10px 12px; border-radius: 10px; }
+.sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.mono { font-family: var(--mono); font-size: var(--fs-meta); }
+.chips.big .chip { font-size: var(--fs-meta); padding: 4px 12px; }
+.chip.glow { background: var(--grad-soft); color: var(--ink); box-shadow: inset 0 0 0 1px var(--line-strong); }
+
+/* ---------- 创意脑图 ---------- */
+.mind-layout { display: grid; grid-template-columns: minmax(0, 1fr) 300px; gap: 20px; align-items: start; }
+.mind-panel { padding: 16px; gap: 10px; }
+.mind-toolbar { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; font-size: var(--fs-meta); }
+.mind-zoom { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; overflow: hidden; }
+.mind-zoom button { border: 0; background: var(--surface-2); padding: 4px 12px; cursor: pointer; color: var(--ink); font-size: var(--fs-meta); }
+.mind-zoom button + button { border-left: 1px solid var(--line); }
+.mind-canvas {
+  width: 100%; height: 600px; display: block; border-radius: 14px; cursor: grab; touch-action: none;
+  background:
+    radial-gradient(circle at 50% 50%, var(--glow-1), transparent 55%),
+    radial-gradient(var(--grid) 1px, transparent 1.5px) 0 0 / 22px 22px,
+    var(--surface-2);
+}
+.mind-canvas:active { cursor: grabbing; }
+.mind-links path { fill: none; stroke: var(--line-strong); stroke-width: 1.5; }
+.mind-links path.is-picked { stroke: var(--accent); stroke-width: 2.2; }
+.mind-node rect { fill: var(--surface-solid); stroke: var(--line-strong); stroke-width: 1.2; cursor: pointer; transition: stroke 0.15s, fill 0.15s; }
+.mind-node text { fill: var(--ink); font-size: 14px; pointer-events: none; font-family: inherit; }
+.mind-node:hover rect { stroke: var(--accent); }
+.mind-node.depth-0 rect { fill: url(#mind-grad); stroke: none; filter: drop-shadow(0 8px 20px rgba(124, 92, 255, 0.5)); }
+.mind-node.depth-0 text { fill: #fff; font-size: 17px; font-weight: var(--fw-bold); }
+.mind-node.depth-1 rect { stroke: color-mix(in srgb, var(--accent) 60%, transparent); stroke-width: 1.6; }
+.mind-node.depth-1 text { font-weight: var(--fw-medium); }
+.mind-node.is-expanded:not(.depth-0) rect { fill: var(--accent-tint); }
+.mind-node.is-picked:not(.depth-0) rect { fill: url(#mind-grad); stroke: none; }
+.mind-node.is-picked text { fill: #fff; }
+.mind-node.is-selected rect { stroke: var(--accent-2); stroke-width: 2.5; }
+.mind-star { pointer-events: all !important; cursor: pointer; font-size: 16px !important; fill: var(--muted) !important; }
+.mind-node.is-picked .mind-star { fill: #fff !important; }
+.mind-spinner { fill: none; stroke: var(--accent-2); stroke-width: 2; stroke-dasharray: 18 10; animation: mind-spin 1s linear infinite; transform-box: fill-box; transform-origin: center; }
+.mind-pop { animation: mind-pop 0.45s cubic-bezier(0.2, 0.9, 0.3, 1.3) both; transform-box: fill-box; transform-origin: center; }
+@keyframes mind-pop { from { opacity: 0; transform: scale(0.6); } to { opacity: 1; transform: scale(1); } }
+@keyframes mind-spin { to { transform: rotate(360deg); } }
+.mind-actions { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; padding: 10px 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.mind-add { display: flex; gap: 6px; align-items: center; }
+.mind-add input { width: 150px; padding: 5px 10px; font-size: var(--fs-meta); }
+.mind-side { position: sticky; top: 20px; }
+.pick-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.pick-list li { display: flex; justify-content: space-between; gap: 8px; align-items: baseline; padding: 8px 10px; border-radius: 10px; background: var(--surface-2); }
+.pick-path { display: flex; flex-wrap: wrap; gap: 4px; font-size: var(--fs-meta); color: var(--muted); }
+.pick-path span + span::before { content: "→"; margin-right: 4px; opacity: 0.6; }
+.pick-leaf { color: var(--ink); font-weight: var(--fw-medium); }
+.mind-empty { justify-items: center; text-align: center; padding: 48px 24px; }
+.mind-empty p { max-width: 460px; }
+.mind-empty-art { position: relative; width: 180px; height: 120px; }
+.mind-empty-art span { position: absolute; width: 14px; height: 14px; border-radius: 50%; background: var(--grad); opacity: 0.85; }
+.mind-empty-art span:nth-child(1) { left: 82px; top: 52px; width: 22px; height: 22px; box-shadow: var(--glow-shadow); }
+.mind-empty-art span:nth-child(2) { left: 20px; top: 20px; }
+.mind-empty-art span:nth-child(3) { left: 150px; top: 14px; }
+.mind-empty-art span:nth-child(4) { left: 10px; top: 92px; }
+.mind-empty-art span:nth-child(5) { left: 156px; top: 96px; }
+.mind-empty-art span:nth-child(6) { left: 88px; top: 0; opacity: 0.5; }
+
+/* ---------- 资产库与风格 ---------- */
+.asset-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 14px; }
+.asset-card { display: grid; grid-template-rows: auto 1fr; border: 1px solid var(--line); border-radius: 16px; overflow: hidden; background: var(--surface); }
+.asset-card.match.has-score { border-color: color-mix(in srgb, var(--accent) 40%, var(--line)); }
+.asset-card.is-selected { border-color: var(--accent); box-shadow: var(--glow-shadow); }
+.asset-thumb { display: block; aspect-ratio: 4 / 3; background: var(--surface-2); }
+.asset-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.asset-form, .match-body { display: grid; gap: 8px; padding: 12px; align-content: start; }
+.asset-form input { padding: 7px 10px; font-size: var(--fs-meta); }
+.asset-form .asset-name { font-weight: var(--fw-bold); font-size: var(--fs-body); }
+.asset-actions { display: flex; gap: 12px; align-items: center; }
+.field em { font-style: normal; margin-left: 4px; }
+.match-reason { font-size: var(--fs-meta); color: var(--ink); }
+.ref-list { display: grid; gap: 14px; }
+.ref-editor { display: grid; grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr); gap: 16px; align-items: start; padding: 12px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
+.ref-frame { position: relative; border-radius: 10px; overflow: hidden; cursor: crosshair; user-select: none; touch-action: none; }
+.ref-frame { width: fit-content; max-width: 100%; }
+.ref-frame img { display: block; width: auto; max-width: 100%; max-height: 440px; height: auto; }
+.ref-box { position: absolute; border: 2px solid var(--accent-2); background: rgba(34, 211, 238, 0.12); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.35); border-radius: 4px; pointer-events: none; }
+.ref-fields { display: grid; gap: 8px; }
+.draft-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 14px; }
+.draft-card { border: 1px solid var(--line); border-radius: 14px; overflow: hidden; background: var(--surface); }
+.draft-pick { border: 0; margin: 0; padding: 0; display: flex; gap: 10px; flex-wrap: wrap; }
+.draft-pick legend { margin-bottom: 8px; }
+.draft-option { display: grid; gap: 6px; justify-items: center; width: 120px; padding: 8px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; background: var(--surface-2); font-size: var(--fs-meta); }
+.draft-option input { position: absolute; opacity: 0; pointer-events: none; }
+.draft-option img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.draft-option:has(input:checked) { border-color: var(--accent); background: var(--grad-soft); }
+.draft-option:has(input:focus-visible) { box-shadow: var(--focus); }
+.check-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.inline-check.big { align-items: flex-start; font-size: var(--fs-body); color: var(--ink); }
+.inline-check.big input { margin-top: 4px; }
+.role-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; align-items: start; }
+.role-card.is-off { opacity: 0.6; }
+.role-name { font-weight: var(--fw-bold); font-size: var(--fs-subtitle); max-width: 220px; }
+
+@media (max-width: 900px) {
+  .mind-layout, .ref-editor, .two-col.even { grid-template-columns: 1fr; }
+  .mind-canvas { height: 440px; }
+  .project-steps { display: none; }
+}

@@ -3,7 +3,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import type { Rule, Store } from "./types";
+import { defaultRoles, steps, type Brief, type Rule, type Stage, type StepKey, type Store } from "./types";
 
 export function dataDir() {
   return process.env.DESIGN_DESK_DATA_DIR || path.join(process.cwd(), "data");
@@ -41,13 +41,65 @@ function presetRules(): Rule[] {
 }
 
 function emptyStore(): Store {
-  return { version: 1, briefs: [], rules: presetRules(), reviews: [] };
+  return { version: 2, briefs: [], rules: presetRules(), reviews: [], drafts: [], assets: [], roles: defaultRoles.map((role) => ({ ...role })) };
+}
+
+// 旧版数据（只有需求卡和评审）补齐新字段；旧评审里的稿件转成“出稿”里的版本。
+function migrate(raw: Partial<Store> & { version?: number }): Store {
+  const store = { ...emptyStore(), ...raw, version: 2 as const };
+  store.briefs = (store.briefs || []).map((brief) => normalizeBrief(brief));
+  if (!raw.drafts) {
+    store.drafts = store.reviews.map((review) => ({
+      id: newId("D"), briefId: review.briefId, version: review.version, image: review.image,
+      imageName: review.imageName, note: review.note, createdAt: review.createdAt,
+    }));
+    for (const review of store.reviews) review.draftId = store.drafts.find((draft) => draft.image === review.image)?.id;
+  }
+  if (!raw.roles?.length) store.roles = defaultRoles.map((role) => ({ ...role }));
+  return store;
+}
+
+// 旧版只有手动阶段：升级时按原阶段把前面的步骤标成已完成，进度不丢。
+function stepsFromStage(stage: string | undefined): Brief["stepsDone"] {
+  const doneCount: Record<string, number> = { 需求: 0, 探索: 1, 精修: 3, 交付: 5, 完成: 6 };
+  return Object.fromEntries(steps.slice(0, doneCount[stage || ""] ?? 0).map((step) => [step.key, true]));
+}
+
+export function normalizeBrief(brief: Partial<Brief> & Pick<Brief, "id">): Brief {
+  return {
+    title: "新需求", raw: "", stage: "需求", questions: "", source: "local", createdAt: now(), updatedAt: now(),
+    ...brief,
+    fields: brief.fields as Brief["fields"],
+    stepsDone: brief.stepsDone || stepsFromStage(brief.stage),
+    mindmap: brief.mindmap || [],
+    styleRefs: brief.styleRefs || [],
+    finalDraftId: brief.finalDraftId ?? null,
+    deliveryChecks: brief.deliveryChecks || [],
+    retro: brief.retro || "",
+  };
+}
+
+export function currentStep(brief: Brief): StepKey {
+  return steps.find((step) => !brief.stepsDone[step.key])?.key || "delivery";
+}
+
+// 看板阶段从步骤推导：做到哪一步，项目就在哪一列。
+export function stageOf(brief: Brief): Stage {
+  if (steps.every((step) => brief.stepsDone[step.key])) return "完成";
+  const step = currentStep(brief);
+  if (step === "brief") return "需求";
+  if (step === "ideas" || step === "style") return "探索";
+  if (step === "draft" || step === "review") return "精修";
+  return "交付";
 }
 
 export function readStore(): Store {
   try {
-    const parsed = JSON.parse(fs.readFileSync(storeFile(), "utf8")) as Store;
-    return { ...emptyStore(), ...parsed };
+    const raw = JSON.parse(fs.readFileSync(storeFile(), "utf8"));
+    const store = migrate(raw);
+    // 旧版数据迁移后立即写回，保证新生成的编号在后续请求里不变。
+    if (raw.version !== 2) writeFileAtomic(store);
+    return store;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     const fresh = emptyStore();

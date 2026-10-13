@@ -2,7 +2,7 @@ import { addRule, updateRule } from "@/app/actions";
 import { Submit } from "@/components/submit";
 import { readStore } from "@/lib/store";
 import { ruleRole } from "@/lib/review";
-import { reviewRoles, ruleLayers } from "@/lib/types";
+import { ruleLayers } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
@@ -34,7 +34,7 @@ export default function RulesPage() {
               </div>
               <ul className="rules">
                 {rules.map((rule) => {
-                  const role = reviewRoles.find((item) => item.key === ruleRole(rule));
+                  const role = ruleRole(rule, store.roles);
                   return (
                     <li key={`${rule.id}-${rule.text}-${rule.confirmed}`} className={rule.confirmed ? "is-confirmed" : "is-pending"}>
                       <form action={updateRule} className="rule-form">
@@ -42,7 +42,7 @@ export default function RulesPage() {
                         <textarea name="text" defaultValue={rule.text} rows={2} aria-label="规则内容" />
                         <div className="rule-meta">
                           <span className={`chip ${rule.confirmed ? "ok" : "warn"}`}>{rule.confirmed ? "已确认" : "待确认"}</span>
-                          <small className="muted">{sourceLabel[rule.source]} · 评审时由{role?.label}检查</small>
+                          <small className="muted">{sourceLabel[rule.source]} · 评审时由{role?.label || "评审角色"}检查</small>
                         </div>
                         <div className="rule-actions">
                           <Submit className="link-button" name="intent" value="save">保存</Submit>
