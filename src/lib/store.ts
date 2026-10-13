@@ -3,7 +3,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { defaultRoles, steps, type Brief, type Rule, type Stage, type StepKey, type Store } from "./types";
+import { defaultFolders, defaultRoles, steps, type Brief, type FileKind, type Stage, type StepKey, type Store } from "./types";
 
 export function dataDir() {
   return process.env.DESIGN_DESK_DATA_DIR || path.join(process.cwd(), "data");
@@ -23,39 +23,29 @@ export function now() {
   return new Date().toISOString();
 }
 
-// 预置规则都标为“待确认”：只是起点，需要按曦望的规范手册改写后再确认。
-function presetRules(): Rule[] {
-  const at = now();
-  const rows: Array<[Rule["layer"], string]> = [
-    ["feel", "科技感，但有温度（示例，按品牌手册改写）"],
-    ["feel", "克制、干净，不堆砌元素（示例）"],
-    ["principle", "Logo 只用官方文件，保留安全区，不变形、不改色"],
-    ["principle", "只用品牌标准色，辅助色不超过两种"],
-    ["principle", "字号层级不超过三级，主标题一眼可读"],
-    ["guide", "标准色色值：待补充（主色、辅助色的 HEX / CMYK）"],
-    ["guide", "品牌名写作“曦望Sunrise”，中英文之间不加空格"],
-    ["guide", "AI 生成的图里不含文字、Logo 和二维码，这些由人在设计软件里排"],
-    ["guide", "印刷物料四边留 3mm 出血，图片 300dpi，CMYK 色彩模式"],
-  ];
-  return rows.map(([layer, text]) => ({ id: newId("R"), layer, text, confirmed: false, source: "preset", createdAt: at }));
-}
-
+// 品牌规则先留空框架：个人项目没有规范，等有了再按“感觉 / 原则 / 指引”三层填。
 function emptyStore(): Store {
-  return { version: 2, briefs: [], rules: presetRules(), reviews: [], drafts: [], assets: [], roles: defaultRoles.map((role) => ({ ...role })) };
+  return { version: 3, folders: defaultFolders.map((folder) => ({ ...folder })), briefs: [], rules: [], reviews: [], drafts: [], assets: [], roles: defaultRoles.map((role) => ({ ...role })) };
 }
 
-// 旧版数据（只有需求卡和评审）补齐新字段；旧评审里的稿件转成“出稿”里的版本。
+const fileKind = (name: string): FileKind => (/\.(png|jpe?g|webp|gif)$/i.test(name) ? "image" : "file");
+
+// 旧版数据补齐新字段：v1 的评审稿件转成“出稿”里的版本；v2 的示例规则（没改过、没确认）清掉，资产放进文件夹。
 function migrate(raw: Partial<Store> & { version?: number }): Store {
-  const store = { ...emptyStore(), ...raw, version: 2 as const };
+  const store = { ...emptyStore(), ...raw, version: 3 as const };
   store.briefs = (store.briefs || []).map((brief) => normalizeBrief(brief));
   if (!raw.drafts) {
     store.drafts = store.reviews.map((review) => ({
       id: newId("D"), briefId: review.briefId, version: review.version, image: review.image,
-      imageName: review.imageName, note: review.note, createdAt: review.createdAt,
+      imageName: review.imageName, kind: "image" as const, note: review.note, createdAt: review.createdAt,
     }));
     for (const review of store.reviews) review.draftId = store.drafts.find((draft) => draft.image === review.image)?.id;
   }
+  store.drafts = store.drafts.map((draft) => ({ ...draft, kind: draft.kind || fileKind(draft.image) }));
   if (!raw.roles?.length) store.roles = defaultRoles.map((role) => ({ ...role }));
+  if (!raw.folders?.length) store.folders = defaultFolders.map((folder) => ({ ...folder }));
+  store.assets = (store.assets || []).map((asset) => ({ ...asset, kind: asset.kind || fileKind(asset.file), folderId: asset.folderId ?? "collected", origin: asset.origin || "collected" }));
+  if ((raw.version || 1) < 3) store.rules = (store.rules || []).filter((rule) => !(rule.source === "preset" && !rule.confirmed));
   return store;
 }
 
@@ -98,7 +88,11 @@ export function readStore(): Store {
     const raw = JSON.parse(fs.readFileSync(storeFile(), "utf8"));
     const store = migrate(raw);
     // 旧版数据迁移后立即写回，保证新生成的编号在后续请求里不变。
-    if (raw.version !== 2) writeFileAtomic(store);
+    if (raw.version !== 3) {
+      // 升级前先另存一份旧数据，万一有问题可以找回。
+      fs.copyFileSync(storeFile(), dataPath(`design-desk.v${raw.version || 1}.backup.json`));
+      writeFileAtomic(store);
+    }
     return store;
   } catch (error) {
     if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;

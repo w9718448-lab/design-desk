@@ -1,7 +1,8 @@
 import { deleteDraft, uploadDraft } from "@/app/actions";
 import { CopyButton } from "@/components/copy-button";
 import { Submit } from "@/components/submit";
-import { UploadForm } from "@/components/upload-form";
+import { Dropzone } from "@/components/dropzone";
+import { FileThumb } from "@/components/file-thumb";
 import { directionText, promptText } from "@/lib/direction";
 import type { Brief, Store } from "@/lib/types";
 
@@ -31,15 +32,26 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
       </div>
 
       <section className="panel feature">
-        <h2>放进一版稿件</h2>
-        <UploadForm action={uploadDraft} hidden={{ briefId: brief.id }} withVersion label="放进稿件" pendingText="上传中…" hint="PNG、JPG 或 WebP，长边 2000 像素左右就够评审用。" />
+        <h2>放进稿件</h2>
+        <Dropzone action={uploadDraft} hidden={{ briefId: brief.id }} multiple title="把稿件拖到这里，或点这里选择" hint="图片、PDF、PSD、AI、Figma 等都可以，一次可以放多个。图片能直接拿去评审。">
+          <div className="form-row">
+            <label className="field grow">
+              <span>这一版改了什么（可选）</span>
+              <input id="draft-note" name="note" placeholder="例：主标题放大，换成方向 A 的暖光" />
+            </label>
+            <label className="field">
+              <span>版本名（可选）</span>
+              <input id="draft-version" name="version" placeholder={`默认：第 ${drafts.length + 1} 版`} />
+            </label>
+          </div>
+        </Dropzone>
       </section>
 
       {drafts.length > 0 && (
         <div className="draft-grid">
           {drafts.map((draft) => (
             <article key={draft.id} className="draft-card">
-              <a href={`/api/uploads/${draft.image}`} target="_blank" className="asset-thumb"><img src={`/api/uploads/${draft.image}`} alt={draft.version} /></a>
+              <a href={`/api/uploads/${draft.image}${draft.kind === "image" ? "" : `?download=${encodeURIComponent(draft.imageName)}`}`} target="_blank" className="asset-thumb"><FileThumb src={`/api/uploads/${draft.image}`} kind={draft.kind} name={draft.imageName} /></a>
               <div className="match-body">
                 <strong>{draft.version}</strong>
                 <small className="muted">{new Date(draft.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{draft.note ? ` · ${draft.note}` : ""}</small>

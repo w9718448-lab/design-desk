@@ -1,6 +1,5 @@
 import Link from "next/link";
-import { createBrief } from "./actions";
-import { Submit } from "@/components/submit";
+import { NewProjectForm } from "@/components/new-project-form";
 import { readStore, currentStep, stageOf } from "@/lib/store";
 import { modelStatus } from "@/lib/ai";
 import { stages, steps } from "@/lib/types";
@@ -16,18 +15,12 @@ export default async function Home() {
       <header className="page-head">
         <span className="eyebrow">Projects · 一个需求一个项目</span>
         <h1>全部项目</h1>
-        <p className="muted">把收到的需求原样贴进来，设计台会建一个项目，带你按 需求 → 创意发散 → 视觉风格 → 出稿 → 评审 → 交付 一步步走。</p>
+        <p className="muted">一个需求一个项目。写一段背景就能建项目，左边会多出一个项目，按 需求 → 创意发散 → 视觉风格 → 出稿 → 评审 → 交付 一步步走。</p>
       </header>
 
       <section className="panel feature">
-        <h2>新需求</h2>
-        <form action={createBrief} className="stack">
-          <textarea id="new-brief" name="raw" rows={5} required placeholder={"把群消息、口头需求原样粘贴进来，例如：\n下周五前出一张校招海报，1080×1920，发公众号和朋友圈，主要给应届生看，想要年轻一点的感觉。"} />
-          <div className="form-actions">
-            <Submit pendingText="整理中…">建项目</Submit>
-            <small className="muted">{aiReady ? "会用你配置的模型整理需求卡，原文里没有的信息一律标“待问”。" : "还没配置模型：按本地规则抽取，没抽到的标“待问”。"}</small>
-          </div>
-        </form>
+        <h2>新项目</h2>
+        <NewProjectForm aiReady={aiReady} />
       </section>
 
       <section className="stage-board">

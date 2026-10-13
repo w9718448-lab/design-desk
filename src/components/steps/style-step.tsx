@@ -8,13 +8,14 @@ import type { Brief, Store } from "@/lib/types";
 
 export async function StyleStep({ store, brief }: { store: Store; brief: Brief }) {
   const status = await modelStatus();
+  const chosen = new Set(brief.styleRefs.map((ref) => ref.assetId));
   const keywords = [...new Set(pickedPaths(brief.mindmap).flat())];
   const signature = keywords.join("|");
   const match = brief.styleMatch;
   const stale = match && match.signature !== signature;
   const scores = new Map((match?.items || []).map((item) => [item.assetId, item]));
-  const assets = [...store.assets].sort((a, b) => (scores.get(b.id)?.score || 0) - (scores.get(a.id)?.score || 0));
-  const chosen = new Set(brief.styleRefs.map((ref) => ref.assetId));
+  const images = store.assets.filter((asset) => asset.kind === "image");
+  const assets = [...images].filter((asset) => !match?.query || (scores.get(asset.id)?.score || 0) > 0 || chosen.has(asset.id)).sort((a, b) => (scores.get(b.id)?.score || 0) - (scores.get(a.id)?.score || 0));
 
   return (
     <>
@@ -33,15 +34,21 @@ export async function StyleStep({ store, brief }: { store: Store; brief: Brief }
         )}
         <form action={runStyleMatch} className="form-actions">
           <input type="hidden" name="id" value={brief.id} />
-          <Submit pendingText="匹配中…">{match ? "重新匹配" : "从资产库匹配风格"}</Submit>
+          <Submit pendingText="匹配中…">{match && !match.query ? "按创意组合重新匹配" : "按创意组合匹配"}</Submit>
           <small className="muted">
             {store.assets.length === 0
               ? "资产库还是空的，先去资产库上传几张图。"
-              : match
-                ? `${match.source === "ai" ? "AI 按意思匹配" : "按标签字面匹配"}，共 ${store.assets.length} 张。${stale ? "创意组合有变化，建议重新匹配。" : ""}`
+              : match && !match.query
+                ? `${match.source === "ai" ? "AI 按意思匹配" : "按关键词字面匹配"}，共 ${images.length} 张。${stale ? "创意组合有变化，建议重新匹配。" : ""}`
                 : status.qwen || status.deepseek ? "AI 会按关键词的意思给每张图打分并说明理由。" : "还没配置模型：按标签字面重合度排序。"}
           </small>
         </form>
+        <form action={runStyleMatch} className="search-row">
+          <input type="hidden" name="id" value={brief.id} />
+          <input id="style-query" name="query" key={match?.query || ""} defaultValue={match?.query || ""} placeholder="也可以自己输入想找的风格，例：胶片颗粒 暖光 留白" aria-label="输入风格关键词" />
+          <Submit className="button" pendingText="检索中…">检索</Submit>
+        </form>
+        {match?.query && <p className="muted">“{match.query}”找到 {assets.length} 张{match.source === "ai" ? "（AI 按意思匹配）" : ""}。清空输入框再点检索，或点上面的按钮，回到按创意组合匹配。</p>}
       </section>
 
       {brief.styleRefs.length > 0 && (
@@ -60,7 +67,7 @@ export async function StyleStep({ store, brief }: { store: Store; brief: Brief }
         </section>
       )}
 
-      {store.assets.length === 0 ? (
+      {images.length === 0 ? (
         <p className="empty">资产库是空的。<Link className="link-button" href="/assets">去上传</Link></p>
       ) : (
         <div className="asset-grid">
@@ -76,7 +83,6 @@ export async function StyleStep({ store, brief }: { store: Store; brief: Brief }
                     {score && (score.score > 0 || match?.source === "ai") && <span className={`chip ${score.score >= 6 ? "ok" : ""}`}>{match?.source === "ai" ? `${score.score} 分` : `${score.score} 处相近`}</span>}
                   </div>
                   {score?.reason && <p className="match-reason">{score.reason}</p>}
-                  {asset.tags.length > 0 && <div className="chips">{asset.tags.slice(0, 6).map((tag) => <span key={tag} className="chip">{tag}</span>)}</div>}
                   <form action={toggleStyleRef}>
                     <input type="hidden" name="id" value={brief.id} />
                     <input type="hidden" name="assetId" value={asset.id} />

@@ -11,11 +11,30 @@ export function imageDataUrl(folder: "uploads" | "assets", file: string) {
   return `data:${mime};base64,${fs.readFileSync(dataPath(folder, file)).toString("base64")}`;
 }
 
-// 上传资产时让千问视觉模型给图片打风格标签；没配置时返回 null，由你手动填。
-export async function tagAsset(file: string) {
+// 没有模型时，从文件名里拆出能用的词当检索关键词。
+export function localTags(name: string) {
+  return [...new Set(name.replace(/\.[^.]+$/, "").split(/[\s_\-—、，,.()（）\[\]【】]+/).map((word) => word.trim()).filter((word) => word.length >= 2 && !/^\d+$/.test(word) && !/^(IMG|DSC|final|copy|副本)$/i.test(word)))].slice(0, 8);
+}
+
+// 上传资产时让 AI 给出检索关键词（不显示在界面上）：图片用千问看图，其他文件按文件名推断。
+export async function tagAsset(file: string, name = "") {
+  if (!/\.(png|jpe?g|webp|gif)$/i.test(file)) {
+    try {
+      const result = await aiJson<{ tags?: string[] }>(
+        `你是品牌设计师的资产整理助手。根据设计文件的文件名，推断它可能是什么内容，给出 4 到 8 个中文检索关键词（物料类型、用途、主题、风格）。不确定的不要写。
+只输出 JSON：{"tags":["",""]}`,
+        `文件名：${name || file}`,
+        300,
+      );
+      const tags = (result?.data.tags || []).map((tag) => tag.trim()).filter(Boolean).slice(0, 10);
+      return result && tags.length ? tags : null;
+    } catch {
+      return null;
+    }
+  }
   try {
     const result = await aiVisionJson<{ tags?: string[] }>(
-      `你是品牌设计师的资产整理助手。看这张图，给出 6 到 10 个中文风格标签，用于以后按创意关键词检索。
+      `你是品牌设计师的资产整理助手。看这张图，给出 6 到 10 个中文关键词，用于以后按创意关键词检索。
 标签覆盖：整体风格、主色调、光感、构图、材质质感、情绪、主要意象。每个标签 2 到 6 个字，不要写图里的文字内容。
 只输出 JSON：{"tags":["",""]}`,
       "给这张图打风格标签。",
@@ -35,7 +54,7 @@ function overlap(keywords: string[], tags: string[]) {
   const hits: string[] = [];
   for (const keyword of keywords) {
     for (const tag of tags) {
-      if (tag.includes(keyword) || keyword.includes(tag) || [...keyword].filter((char) => tag.includes(char)).length >= 2) {
+      if (tag.includes(keyword) || keyword.includes(tag) || [...keyword].filter((char) => /[\u4e00-\u9fff]/.test(char) && tag.includes(char)).length >= 2) {
         hits.push(tag);
       }
     }
@@ -75,4 +94,13 @@ export async function matchAssets(keywords: string[], assets: Asset[]): Promise<
     // 模型失败时退回本地匹配
   }
   return { matches: local, source: "local" };
+}
+
+// 资产库搜索：先按名称、备注和隐藏关键词找；配了模型时再按意思排序。
+export async function searchAssets(query: string, assets: Asset[]) {
+  const words = query.split(/[\s,，、;；]+/).map((word) => word.trim()).filter(Boolean);
+  if (!words.length) return { matches: assets.map((asset) => ({ asset, score: 0, reason: "" })), source: "local" as const };
+  const { matches, source } = await matchAssets(words, assets);
+  const literal = (asset: Asset) => words.some((word) => [asset.name, asset.note, ...asset.tags].some((text) => text.includes(word)));
+  return { matches: matches.filter((match) => match.score >= (source === "ai" ? 4 : 1) || literal(match.asset)), source };
 }

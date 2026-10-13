@@ -3,10 +3,11 @@
 import fs from "node:fs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { extractBrief, draftQuestions } from "@/lib/brief";
+import { extractBrief, mergeFields } from "@/lib/brief";
+import { fileError, kindOf, saveFile } from "@/lib/files";
 import { aiReview, localChecks } from "@/lib/review";
 import { expandMindNode, pickedPaths, seedMindmap } from "@/lib/ideas";
-import { matchAssets, tagAsset } from "@/lib/assets";
+import { localTags, matchAssets, searchAssets, tagAsset } from "@/lib/assets";
 import { dataPath, newId, normalizeBrief, now, readStore, stageOf, updateStore } from "@/lib/store";
 import { removeSecret, saveSecret, type ProviderId } from "@/lib/ai";
 import { briefFields, defaultRoles, ruleLayers, steps, type Box, type Brief, type BriefFieldKey, type FieldStatus, type MindNode, type Review, type RuleLayer, type StepKey, type Store } from "@/lib/types";
@@ -27,23 +28,6 @@ function findBrief(store: Store, id: string) {
   return store.briefs.find((item) => item.id === id);
 }
 
-const allowedImage = /\.(png|jpe?g|webp)$/i;
-
-async function saveImage(file: File, folder: "uploads" | "assets") {
-  const extension = file.name.split(".").pop()!.toLowerCase();
-  const name = `IMG-${newId("x").slice(2)}.${extension}`;
-  fs.mkdirSync(dataPath(folder), { recursive: true });
-  fs.writeFileSync(dataPath(folder, name), Buffer.from(await file.arrayBuffer()));
-  return name;
-}
-
-function imageError(file: FormDataEntryValue | null) {
-  if (!(file instanceof File) || !file.size) return "先选一张图片（PNG、JPG 或 WebP）。";
-  if (!allowedImage.test(file.name)) return "只支持 PNG、JPG、WebP。PDF、AI、PSD 文件请先导出成图片。";
-  if (file.size > 10 * 1024 * 1024) return "图片超过 10MB，请导出一张小一点的预览图（长边 2000 像素左右即可）。";
-  return "";
-}
-
 /* ---------- 需求 ---------- */
 
 export async function createBrief(form: FormData) {
@@ -58,6 +42,22 @@ export async function createBrief(form: FormData) {
   redirect(`/briefs/${id}/brief`);
 }
 
+// 随时补一段背景：AI（或本地规则）识别后补进需求卡，已确定的内容不会被覆盖。
+export async function addBackground(form: FormData) {
+  const id = text(form, "id");
+  const extra = text(form, "background");
+  if (!extra) return;
+  const extracted = await extractBrief(extra);
+  await updateStore((store) => {
+    const brief = findBrief(store, id);
+    if (!brief) return;
+    brief.raw = brief.raw ? `${brief.raw}\n\n【补充】${extra}` : extra;
+    brief.fields = mergeFields(brief.fields, extracted.fields);
+    touch(brief);
+  });
+  refresh();
+}
+
 export async function saveBriefCard(form: FormData) {
   const id = text(form, "id");
   await updateStore((store) => {
@@ -67,9 +67,8 @@ export async function saveBriefCard(form: FormData) {
     for (const field of briefFields) {
       const value = text(form, `field-${field.key}`);
       const status = text(form, `status-${field.key}`) as FieldStatus;
-      brief.fields[field.key as BriefFieldKey] = { value, status: value ? (status === "ask" ? "confirmed" : status) : "ask" };
+      brief.fields[field.key as BriefFieldKey] = { value, status: value ? (status === "ask" ? "inferred" : status) : "ask" };
     }
-    brief.questions = draftQuestions(brief.fields);
     touch(brief);
   });
   refresh();
@@ -78,6 +77,7 @@ export async function saveBriefCard(form: FormData) {
 export async function deleteBrief(form: FormData) {
   const id = text(form, "id");
   await updateStore((store) => {
+    // 已经存进资产库的终稿保留在资产库里。
     for (const draft of store.drafts.filter((item) => item.briefId === id)) fs.rmSync(dataPath("uploads", draft.image), { force: true });
     store.drafts = store.drafts.filter((item) => item.briefId !== id);
     store.reviews = store.reviews.filter((review) => review.briefId !== id);
@@ -182,17 +182,20 @@ export async function editIdea(briefId: string, nodeId: string, intent: "pick" |
 
 export async function runStyleMatch(form: FormData) {
   const id = text(form, "id");
+  const query = text(form, "query");
   const store = readStore();
   const brief = findBrief(store, id);
   if (!brief) return;
   const keywords = [...new Set(pickedPaths(brief.mindmap).flat())];
-  // 需求卡里写的调性也参与匹配，例如“希望感、星空”。
+  // 自己输入了词就按输入的找；否则按创意组合，加上需求卡里写的调性。
   const tone = brief.fields.tone.value.split(/[，,、；;。\s]+/).map((word) => word.replace(/^(想要|有|要|的|一种)+|(的感觉|感觉|的|感)+$/g, "")).filter((word) => word.length >= 2);
-  const { matches, source } = await matchAssets([...new Set([...keywords, ...tone])], store.assets);
+  const { matches, source } = query
+    ? await searchAssets(query, store.assets)
+    : await matchAssets([...new Set([...keywords, ...tone])], store.assets);
   await updateStore((current) => {
     const target = findBrief(current, id);
     if (!target) return;
-    target.styleMatch = { signature: keywords.join("|"), source, items: matches.map((match) => ({ assetId: match.asset.id, score: match.score, reason: match.reason })) };
+    target.styleMatch = { signature: query ? `q:${query}` : keywords.join("|"), query, source, items: matches.map((match) => ({ assetId: match.asset.id, score: match.score, reason: match.reason })) };
     touch(target);
   });
   refresh();
@@ -228,21 +231,21 @@ export async function saveStyleRef(briefId: string, assetId: string, note: strin
 export type UploadState = { error?: string; message?: string };
 
 export async function uploadAssets(_: UploadState, form: FormData): Promise<UploadState> {
-  const files = form.getAll("images").filter((item): item is File => item instanceof File && item.size > 0);
-  if (!files.length) return { error: "先选择图片，可以一次选多张。" };
-  const bad = files.map((file) => imageError(file)).find(Boolean);
+  const files = form.getAll("files").filter((item): item is File => item instanceof File && item.size > 0);
+  if (!files.length) return { error: "先选择文件，可以一次放多个。" };
+  const bad = files.map((file) => fileError(file)).find(Boolean);
   if (bad) return { error: bad };
-  let tagged = 0;
+  const folderId = text(form, "folderId");
   for (const file of files) {
-    const name = await saveImage(file, "assets");
-    const tags = await tagAsset(name);
-    if (tags) tagged += 1;
+    const name = await saveFile(file, "assets");
+    const tags = (await tagAsset(name, file.name)) || localTags(file.name);
     await updateStore((store) => {
-      store.assets.unshift({ id: newId("A"), file: name, name: file.name.replace(/\.[^.]+$/, ""), tags: tags || [], note: "", tagSource: tags ? "ai" : "manual", createdAt: now() });
+      const folder = store.folders.some((item) => item.id === folderId) ? folderId : "collected";
+      store.assets.unshift({ id: newId("A"), file: name, name: file.name.replace(/\.[^.]+$/, ""), kind: kindOf(file.name), folderId: folder, origin: folder === "own" ? "own" : "collected", tags, note: "", tagSource: "ai", createdAt: now() });
     });
   }
   refresh();
-  return { message: tagged ? `已上传 ${files.length} 张，${tagged} 张已自动打好风格标签。` : `已上传 ${files.length} 张。还没配置千问，请给每张图手动写几个风格标签，匹配时会用到。` };
+  return { message: `已放进 ${files.length} 个。` };
 }
 
 export async function updateAsset(form: FormData) {
@@ -258,22 +261,28 @@ export async function updateAsset(form: FormData) {
       return;
     }
     asset.name = text(form, "name") || asset.name;
-    asset.tags = text(form, "tags").split(/[、，,\s]+/).map((tag) => tag.trim()).filter(Boolean).slice(0, 16);
     asset.note = text(form, "note");
-    asset.tagSource = "manual";
+    const folderId = text(form, "folderId");
+    if (folderId === "" || store.folders.some((item) => item.id === folderId)) asset.folderId = folderId;
+    asset.origin = asset.folderId === "own" ? "own" : asset.origin;
   });
   refresh();
 }
 
-export async function retagAsset(form: FormData) {
+export async function saveFolder(form: FormData) {
   const id = text(form, "id");
-  const asset = readStore().assets.find((item) => item.id === id);
-  if (!asset) return;
-  const tags = await tagAsset(asset.file);
-  if (!tags) return;
+  const intent = text(form, "intent");
+  const name = text(form, "name").slice(0, 30);
   await updateStore((store) => {
-    const target = store.assets.find((item) => item.id === id);
-    if (target) { target.tags = tags; target.tagSource = "ai"; }
+    if (intent === "add" && name) store.folders.push({ id: newId("FD"), name });
+    const folder = store.folders.find((item) => item.id === id);
+    if (!folder) return;
+    if (intent === "rename" && name) folder.name = name;
+    // 删文件夹不删里面的东西，移到“未分类”。
+    if (intent === "delete" && !["own", "collected"].includes(id)) {
+      store.folders = store.folders.filter((item) => item.id !== id);
+      for (const asset of store.assets) if (asset.folderId === id) asset.folderId = "";
+    }
   });
   refresh();
 }
@@ -282,19 +291,40 @@ export async function retagAsset(form: FormData) {
 
 export async function uploadDraft(_: UploadState, form: FormData): Promise<UploadState> {
   const briefId = text(form, "briefId");
-  const file = form.get("image");
-  const error = imageError(file);
-  if (error) return { error };
-  const image = await saveImage(file as File, "uploads");
+  const files = form.getAll("files").filter((item): item is File => item instanceof File && item.size > 0);
+  if (!files.length) return { error: "先选择文件。" };
+  const bad = files.map((file) => fileError(file)).find(Boolean);
+  if (bad) return { error: bad };
+  const typed = text(form, "version");
+  for (const [index, file] of files.entries()) {
+    const image = await saveFile(file, "uploads");
+    await updateStore((store) => {
+      const brief = findBrief(store, briefId);
+      if (!brief) return;
+      const count = store.drafts.filter((item) => item.briefId === briefId).length;
+      const version = typed ? (files.length > 1 ? `${typed}-${index + 1}` : typed) : `第 ${count + 1} 版`;
+      store.drafts.unshift({ id: newId("D"), briefId, version, image, imageName: file.name, kind: kindOf(file.name), note: text(form, "note"), createdAt: now() });
+      touch(brief);
+    });
+  }
+  refresh();
+  return { message: files.length > 1 ? `已放进 ${files.length} 个文件。` : "已放进稿件。" };
+}
+
+// 评审不一定全员满意：你可以直接把某一版定为终稿，跳到交付。
+export async function chooseFinal(form: FormData) {
+  const id = text(form, "id");
+  const draftId = text(form, "draftId");
   await updateStore((store) => {
-    const brief = findBrief(store, briefId);
-    if (!brief) return;
-    const count = store.drafts.filter((item) => item.briefId === briefId).length;
-    store.drafts.unshift({ id: newId("D"), briefId, version: text(form, "version") || `第 ${count + 1} 版`, image, imageName: (file as File).name, note: text(form, "note"), createdAt: now() });
+    const brief = findBrief(store, id);
+    if (!brief || !store.drafts.some((draft) => draft.id === draftId)) return;
+    brief.finalDraftId = draftId;
+    brief.stepsDone.draft = true;
+    brief.stepsDone.review = true;
     touch(brief);
   });
   refresh();
-  return { message: "已放进稿件版本。" };
+  redirect(`/briefs/${id}/delivery`);
 }
 
 export async function deleteDraft(form: FormData) {
@@ -333,7 +363,8 @@ export async function runReview(_: ReviewState, form: FormData): Promise<ReviewS
   };
   let error: string | undefined;
   try {
-    const result = await aiReview(brief, store.rules, roles, draft.image, note, store.assets);
+    // 非图片稿件（PDF、源文件）模型看不了，直接生成检查清单。
+    const result = draft.kind === "image" ? await aiReview(brief, store.rules, roles, draft.image, note, store.assets) : null;
     if (result) review = { ...review, mode: "ai", model: result.model, findings: result.findings, conflicts: result.conflicts };
   } catch (cause) {
     error = `模型评审失败（${cause instanceof Error ? cause.message : "未知原因"}），已改用本地检查清单。`;
@@ -413,14 +444,36 @@ export async function saveRole(form: FormData) {
 export async function saveDelivery(form: FormData) {
   const id = text(form, "id");
   const finish = text(form, "intent") === "finish";
-  await updateStore((store) => {
-    const brief = findBrief(store, id);
-    if (!brief) return;
-    brief.finalDraftId = text(form, "finalDraftId") || null;
-    brief.deliveryChecks = form.getAll("checks").map(String);
-    brief.retro = text(form, "retro");
-    if (finish) brief.stepsDone.delivery = true;
-    touch(brief);
+  const store = readStore();
+  const brief = findBrief(store, id);
+  if (!brief) return;
+  const finalDraftId = text(form, "finalDraftId") || null;
+  const draft = store.drafts.find((item) => item.id === finalDraftId);
+  // 交付完成时，终稿复制一份进资产库“我的作品”，以后的项目可以检索到它。
+  let archived: { file: string; tags: string[] } | null = null;
+  const existing = store.assets.find((asset) => asset.id === brief.finalAssetId);
+  if (finish && draft && existing?.sourceBriefId !== `${id}:${draft.id}`) {
+    const ext = draft.image.split(".").pop();
+    const file = `${draft.kind === "image" ? "IMG" : "F"}-${newId("x").slice(2)}.${ext}`;
+    fs.mkdirSync(dataPath("assets"), { recursive: true });
+    fs.copyFileSync(dataPath("uploads", draft.image), dataPath("assets", file));
+    const picks = [...new Set(pickedPaths(brief.mindmap).flat())];
+    const tags = [...new Set([...picks, ...((await tagAsset(file, draft.imageName)) || []), brief.title])].slice(0, 16);
+    archived = { file, tags };
+  }
+  await updateStore((current) => {
+    const target = findBrief(current, id);
+    if (!target) return;
+    target.finalDraftId = finalDraftId;
+    target.deliveryChecks = form.getAll("checks").map(String);
+    target.retro = text(form, "retro");
+    if (finish) target.stepsDone.delivery = true;
+    if (archived && draft) {
+      const assetId = newId("A");
+      current.assets.unshift({ id: assetId, file: archived.file, name: `${target.title}_${draft.version}`, kind: draft.kind, folderId: "own", origin: "own", tags: archived.tags, note: target.retro, tagSource: "ai", sourceBriefId: `${id}:${draft.id}`, createdAt: now() });
+      target.finalAssetId = assetId;
+    }
+    touch(target);
   });
   refresh();
 }

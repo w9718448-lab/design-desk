@@ -55,8 +55,9 @@ export type Brief = {
   mindmap: MindNode[];
   mindmapSource?: "ai" | "local";
   styleRefs: StyleRef[];
-  styleMatch?: { signature: string; source: "ai" | "local"; items: Array<{ assetId: string; score: number; reason: string }> };
+  styleMatch?: { signature: string; query?: string; source: "ai" | "local"; items: Array<{ assetId: string; score: number; reason: string }> };
   finalDraftId: string | null;
+  finalAssetId?: string;
   deliveryChecks: string[];
   retro: string;
   createdAt: string;
@@ -112,15 +113,19 @@ export type Finding = {
   ruleAdded?: boolean;
 };
 
+// 稿件可以是图片，也可以是 PDF、源文件等；只有图片能拿去评审。
 export type Draft = {
   id: string;
   briefId: string;
   version: string;
   image: string;
   imageName: string;
+  kind: FileKind;
   note: string;
   createdAt: string;
 };
+
+export type FileKind = "image" | "file";
 
 export type Review = {
   id: string;
@@ -139,18 +144,31 @@ export type Review = {
   createdAt: string;
 };
 
+// 资产库像文件夹一样整理。tags 是 AI 给的检索关键词，界面上不显示，只用来搜索和匹配。
 export type Asset = {
   id: string;
   file: string;
   name: string;
+  kind: FileKind;
+  folderId: string;
+  origin: "own" | "collected";
   tags: string[];
   note: string;
   tagSource: "ai" | "manual";
+  sourceBriefId?: string;
   createdAt: string;
 };
 
+export type Folder = { id: string; name: string };
+
+export const defaultFolders: Folder[] = [
+  { id: "own", name: "我的作品" },
+  { id: "collected", name: "收集的素材" },
+];
+
 export type Store = {
-  version: 2;
+  version: 3;
+  folders: Folder[];
   briefs: Brief[];
   rules: Rule[];
   reviews: Review[];

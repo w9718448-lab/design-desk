@@ -1,6 +1,8 @@
 import { reopenStep, saveDelivery } from "@/app/actions";
 import { Submit } from "@/components/submit";
 import { CopyButton } from "@/components/copy-button";
+import { FileThumb } from "@/components/file-thumb";
+import Link from "next/link";
 import type { Brief, Store } from "@/lib/types";
 
 const standardChecks = [
@@ -24,6 +26,7 @@ export function DeliveryStep({ store, brief }: { store: Store; brief: Brief }) {
   const size = sizeText.match(/\d{2,5}\s*[×xX*]\s*\d{2,5}/)?.[0].replace(/\s*[xX*]\s*/, "×") || brief.fields.deliverables.value.split(/[；;，,]/)[0]?.trim() || "尺寸";
   const fileName = `${today()}_${brief.title.replace(/[\\/:*?"<>|\s]+/g, "")}_${size.replace(/[\\/:*?"<>|\s]+/g, "")}_${final ? final.version.replace(/\s+/g, "") : "终稿"}`;
   const done = Boolean(brief.stepsDone.delivery);
+  const archived = store.assets.find((asset) => asset.id === brief.finalAssetId);
   const checked = new Set(brief.deliveryChecks);
 
   return (
@@ -31,13 +34,14 @@ export function DeliveryStep({ store, brief }: { store: Store; brief: Brief }) {
       <input type="hidden" name="id" value={brief.id} />
       <section className="panel">
         <h2>选定终稿</h2>
+        <p className="muted">评审不一定人人满意，最后用哪一版由你决定。</p>
         {drafts.length === 0 ? <p className="muted">还没有稿件版本。</p> : (
           <fieldset className="draft-pick">
             <legend className="sr-only">终稿</legend>
             {drafts.map((draft) => (
               <label key={draft.id} className="draft-option">
                 <input type="radio" name="finalDraftId" value={draft.id} defaultChecked={draft.id === final?.id} />
-                <img src={`/api/uploads/${draft.image}`} alt="" />
+                <FileThumb src={`/api/uploads/${draft.image}`} kind={draft.kind} name={draft.imageName} />
                 <span>{draft.version}</span>
               </label>
             ))}
@@ -83,7 +87,8 @@ export function DeliveryStep({ store, brief }: { store: Store; brief: Brief }) {
           <Submit className="button" name="intent" value="save" pendingText="保存中…">保存</Submit>
           {done
             ? <span className="chip ok">项目已完成</span>
-            : <Submit name="intent" value="finish" pendingText="保存中…">交付完成，结束项目 ✓</Submit>}
+            : <Submit name="intent" value="finish" pendingText="存档中…">交付完成，终稿存进资产库 ✓</Submit>}
+          {done && archived && <Link className="link-button" href={`/assets?folder=own`}>终稿已存进资产库“我的作品” →</Link>}
           {done && <Submit className="link-button" formAction={reopenStep}>改回进行中</Submit>}
           <input type="hidden" name="step" value="delivery" />
         </div>

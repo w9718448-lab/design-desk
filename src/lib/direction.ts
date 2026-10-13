@@ -7,8 +7,7 @@ export function directionText(brief: Brief, store: Store) {
   const paths = pickedPaths(brief.mindmap);
   const refs = brief.styleRefs.map((ref) => {
     const asset = store.assets.find((item) => item.id === ref.assetId);
-    const tags = asset?.tags.slice(0, 4).join("、");
-    return `- ${asset?.name || "参考图"}${tags ? `（${tags}）` : ""}${ref.note ? `：${ref.note}` : ""}${ref.box ? "（只参考框选的局部）" : ""}`;
+    return `- ${asset?.name || "参考图"}${ref.note ? `：${ref.note}` : ""}${ref.box ? "（只参考框选的局部）" : ""}`;
   });
   const feel = store.rules.filter((rule) => rule.layer === "feel").map((rule) => rule.text);
   const lines = [
@@ -28,7 +27,8 @@ export function promptText(brief: Brief, store: Store) {
   const leaves = pickedPaths(brief.mindmap).map((path) => path[path.length - 1]);
   const style = brief.styleRefs.map((ref) => {
     const asset = store.assets.find((item) => item.id === ref.assetId);
-    return [ref.note, asset?.tags.slice(0, 4).join("、")].filter(Boolean).join("，");
+    // 检索关键词是内部用的，不写进提示词；没写备注就提醒自己把参考图一起发给生图工具。
+    return ref.note || (asset ? `参考图“${asset.name}”的风格` : "");
   }).filter(Boolean);
   const size = brief.fields.deliverables.value;
   return [

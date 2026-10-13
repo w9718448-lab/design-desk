@@ -1,5 +1,6 @@
+import { FileThumb } from "@/components/file-thumb";
 import Link from "next/link";
-import { decideFinding, deleteReview, findingToRule } from "@/app/actions";
+import { chooseFinal, decideFinding, deleteReview, findingToRule } from "@/app/actions";
 import { ReviewForm } from "@/components/review-form";
 import { Submit } from "@/components/submit";
 import { modelStatus } from "@/lib/ai";
@@ -62,7 +63,7 @@ export async function ReviewStep({ store, brief }: { store: Store; brief: Brief 
         return (
           <section key={review.id} className="panel review">
             <div className="review-head">
-              <a href={`/api/uploads/${review.image}`} target="_blank" className="thumb"><img src={`/api/uploads/${review.image}`} alt={review.version} /></a>
+              <a href={`/api/uploads/${review.image}`} target="_blank" className="thumb"><FileThumb src={`/api/uploads/${review.image}`} kind={/\.(png|jpe?g|webp|gif)$/i.test(review.image) ? "image" : "file"} name={review.imageName} /></a>
               <div>
                 <h2>{review.version}</h2>
                 <p className="muted">
@@ -72,10 +73,19 @@ export async function ReviewStep({ store, brief }: { store: Store; brief: Brief 
                 </p>
                 {review.note && <p className="muted">说明：{review.note}</p>}
               </div>
-              <form action={deleteReview} className="push-right">
-                <input type="hidden" name="id" value={review.id} />
-                <Submit className="link-button danger">删除这次评审</Submit>
-              </form>
+              <div className="push-right review-actions">
+                {review.draftId && drafts.some((draft) => draft.id === review.draftId) && (
+                  <form action={chooseFinal}>
+                    <input type="hidden" name="id" value={brief.id} />
+                    <input type="hidden" name="draftId" value={review.draftId} />
+                    <Submit className="button small" pendingText="提交中…">就用这一版，提交终稿 →</Submit>
+                  </form>
+                )}
+                <form action={deleteReview}>
+                  <input type="hidden" name="id" value={review.id} />
+                  <Submit className="link-button danger">删除这次评审</Submit>
+                </form>
+              </div>
             </div>
             {review.conflicts.length > 0 && (
               <div className="conflicts">

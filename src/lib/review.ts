@@ -68,7 +68,7 @@ type AiFinding = { role?: string; severity?: string; text?: string; basis?: stri
 export async function aiReview(brief: Brief, rules: Rule[], roles: Role[], image: string, note: string, styleAssets: Asset[]) {
   const roleText = roles.map((role) => `- ${role.key}（${role.label}）：人物特质：${role.persona || "无"}；依据：${role.basis || "无"}；关注：${role.focus}`).join("\n");
   const ruleText = rules.map((rule) => `- [${rule.layer === "feel" ? "感觉" : rule.layer === "principle" ? "原则" : "指引"}${rule.confirmed ? "" : "·待确认"}] ${rule.text}`).join("\n");
-  const briefText = Object.entries(brief.fields).map(([key, value]) => `${key}: ${value.value || "（待问）"}`).join("\n");
+  const briefText = Object.entries(brief.fields).map(([key, value]) => `${key}: ${value.value || "（待确定）"}`).join("\n");
   const ideas = pickedPaths(brief.mindmap).map((path) => path.join(" → ")).join("；");
   const style = brief.styleRefs.map((ref) => {
     const asset = styleAssets.find((item) => item.id === ref.assetId);

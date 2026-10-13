@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import { SidebarNav } from "@/components/sidebar-nav";
-import { ThemeToggle } from "@/components/theme-toggle";
-import { currentStep, readStore } from "@/lib/store";
+import { currentStep, readStore, stageOf } from "@/lib/store";
 
 export const metadata: Metadata = { title: "设计台", description: "个人品牌设计工作流" };
 export const dynamic = "force-dynamic";
@@ -11,7 +10,10 @@ export const dynamic = "force-dynamic";
 const themeScript = `try{var t=localStorage.getItem("dd-theme");if(t!=="dark"&&t!=="light"){t=matchMedia("(prefers-color-scheme: light)").matches?"light":"dark"}document.documentElement.dataset.theme=t}catch(e){document.documentElement.dataset.theme="dark"}`;
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const projects = readStore().briefs.map((brief) => ({ id: brief.id, title: brief.title, done: brief.stepsDone, current: currentStep(brief) }));
+  // 进行中的项目排前面，做完的排后面。
+  const projects = readStore().briefs
+    .map((brief) => ({ id: brief.id, title: brief.title, done: brief.stepsDone, current: currentStep(brief), finished: stageOf(brief) === "完成" }))
+    .sort((a, b) => Number(a.finished) - Number(b.finished));
   return (
     <html lang="zh-CN" data-theme="dark" suppressHydrationWarning>
       <head>
@@ -27,9 +29,6 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
               <span className="brand-copy"><strong>设计台</strong><small>DESIGN DESK</small></span>
             </div>
             <SidebarNav projects={projects} />
-            <div className="sidebar-foot">
-              <ThemeToggle />
-            </div>
           </aside>
           <main className="main">{children}</main>
         </div>
