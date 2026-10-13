@@ -11,6 +11,7 @@ export default async function SettingsPage() {
   return (
     <>
       <header className="page-head">
+        <span className="eyebrow">Settings</span>
         <h1>设置</h1>
         <p className="muted">不配置模型也能用：需求卡按本地规则整理，评审生成检查清单。配上千问后，能自动看图评审。</p>
       </header>

@@ -14,6 +14,7 @@ export default function RulesPage() {
   return (
     <>
       <header className="page-head">
+        <span className="eyebrow">Brand Rules · 感觉 → 原则 → 指引</span>
         <h1>品牌规则</h1>
         <p className="muted">从感觉到指引，三层写清楚。评审时每条意见都要引用这里的规则；没确认的规则只能当建议。</p>
         <div className="head-actions">

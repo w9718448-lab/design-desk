@@ -56,6 +56,7 @@ export default async function BriefPage({ params }: { params: Promise<{ id: stri
   return (
     <>
       <header className="page-head">
+        <span className="eyebrow">Brief · {brief.stage}</span>
         <h1>{brief.title}</h1>
         <form action={setStage} className="stage-switch" aria-label="阶段">
           <input type="hidden" name="id" value={brief.id} />

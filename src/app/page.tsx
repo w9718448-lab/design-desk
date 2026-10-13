@@ -14,11 +14,12 @@ export default async function Home() {
   return (
     <>
       <header className="page-head">
+        <span className="eyebrow">Briefs · 一个需求一张卡</span>
         <h1>需求</h1>
         <p className="muted">一个设计需求一张卡。把收到的需求原样贴进来，先问清楚，再开工。</p>
       </header>
 
-      <section className="panel">
+      <section className="panel feature">
         <h2>新需求</h2>
         <form action={createBrief} className="stack">
           <textarea name="raw" rows={6} required placeholder={"把群消息、口头需求原样粘贴进来，例如：\n下周五前出一张校招海报，1080×1920，发公众号和朋友圈，主要给应届生看，想要年轻一点的感觉。"} />
@@ -30,11 +31,11 @@ export default async function Home() {
       </section>
 
       <section className="stage-board">
-        {stages.map((stage) => {
+        {stages.map((stage, index) => {
           const briefs = store.briefs.filter((brief) => brief.stage === stage);
           return (
             <div key={stage} className="stage-column">
-              <h2>{stage}<span className="count">{briefs.length}</span></h2>
+              <h2><span className="eyebrow">{String(index + 1).padStart(2, "0")}</span>{stage}<span className="count">{briefs.length}</span></h2>
               {briefs.length === 0 && <p className="empty">暂无</p>}
               {briefs.map((brief) => {
                 const asks = briefFields.filter((field) => brief.fields[field.key].status === "ask").length;
