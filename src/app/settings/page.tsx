@@ -25,7 +25,7 @@ export default async function SettingsPage() {
                 <small className="muted">{id === "qwen" ? "整理需求 + 看图评审（推荐，国内直连，新用户有免费额度）" : "只能整理需求，不能看图"}</small>
               </div>
               <span className={`chip ${status[id] ? "ok" : ""}`}>{status[id] ? "已配置" : "未配置"}</span>
-              {isMac && (
+              {(
                 <form action={saveKey} className="key-form">
                   <input type="hidden" name="provider" value={id} />
                   <input type="password" name="key" placeholder="粘贴 API Key" autoComplete="off" />
@@ -39,7 +39,7 @@ export default async function SettingsPage() {
         <small className="muted">
           {isMac
             ? "密钥保存在这台 Mac 的钥匙串里，和上等马共用；在上等马里配过的，这里会自动显示“已配置”。不要把密钥发给任何人。"
-            : `这台电脑不是 Mac：在设计台文件夹里新建 .env.local，写入 ${providers.qwen.env}=你的密钥，然后重启。`}
+            : "密钥只保存在这台电脑的“文档/设计台数据”文件夹里（模型密钥.json），不会上传。不要把密钥或这个文件发给任何人。"}
         </small>
       </section>
       <section className="panel">

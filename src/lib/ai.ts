@@ -2,6 +2,8 @@ import "server-only";
 
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
+import fs from "node:fs";
+import { dataPath } from "./store";
 
 const execFileAsync = promisify(execFile);
 // 与上等马共用同一个钥匙串条目：在上等马里配过的千问 / DeepSeek 密钥，这里直接可用。
@@ -14,8 +16,24 @@ export const providers = {
 
 export type ProviderId = keyof typeof providers;
 
+// Windows 等非 Mac 电脑没有钥匙串：密钥存在本机数据文件夹里的 模型密钥.json，只在这台电脑上。
+const secretFile = () => dataPath("模型密钥.json");
+
+function readSecretFile(): Partial<Record<ProviderId, string>> {
+  try {
+    return JSON.parse(fs.readFileSync(secretFile(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function writeSecretFile(secrets: Partial<Record<ProviderId, string>>) {
+  fs.mkdirSync(dataPath(), { recursive: true });
+  fs.writeFileSync(secretFile(), JSON.stringify(secrets, null, 2), { mode: 0o600 });
+}
+
 async function keychainSecret(id: ProviderId) {
-  if (process.platform !== "darwin") return "";
+  if (process.platform !== "darwin") return readSecretFile()[id]?.trim() || "";
   try {
     const { stdout } = await execFileAsync("/usr/bin/security", ["find-generic-password", "-a", id, "-s", keychainService, "-w"], { timeout: 3000 });
     return stdout.trim();
@@ -29,12 +47,20 @@ export async function getSecret(id: ProviderId) {
 }
 
 export async function saveSecret(id: ProviderId, secret: string) {
-  if (process.platform !== "darwin") throw new Error("这台电脑不是 Mac，请把密钥写进设计台文件夹里的 .env.local。");
+  if (process.platform !== "darwin") {
+    writeSecretFile({ ...readSecretFile(), [id]: secret.trim() });
+    return;
+  }
   await execFileAsync("/usr/bin/security", ["add-generic-password", "-U", "-a", id, "-s", keychainService, "-w", secret.trim()], { timeout: 5000 });
 }
 
 export async function removeSecret(id: ProviderId) {
-  if (process.platform !== "darwin") return;
+  if (process.platform !== "darwin") {
+    const secrets = readSecretFile();
+    delete secrets[id];
+    writeSecretFile(secrets);
+    return;
+  }
   await execFileAsync("/usr/bin/security", ["delete-generic-password", "-a", id, "-s", keychainService], { timeout: 5000 }).catch(() => undefined);
 }
 
