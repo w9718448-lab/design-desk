@@ -1,14 +1,19 @@
 name: 发布安装包
 
-# 推送 v 开头的标签（例如 v0.4.0）时，自动打 Mac + Windows 通用包并发布到 Releases。
-# 也可以在 Actions 页面手动运行，产物在运行结果的 Artifacts 里。
+# 改了 package.json 里的版本号并推到 main 时，自动打 Mac + Windows 通用包，
+# 发布成 Releases 里的 v<版本号>（标签由这里创建）。也可以在 Actions 页面手动运行，重新打当前版本。
 on:
   push:
-    tags: ["v*"]
+    branches: [main]
+    paths: [package.json]
   workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: release
+  cancel-in-progress: false
 
 jobs:
   package:
@@ -20,20 +25,30 @@ jobs:
         with:
           node-version: 22
           cache: npm
-      - run: npm ci
-      - run: npx tsc --noEmit
-      - run: bash packaging/build-package.sh dist-package
-      - name: 发布到 Releases
-        if: startsWith(github.ref, 'refs/tags/')
+      - name: 读取版本号
+        id: version
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "dist-package/设计台_安装包_Mac和Windows.zip" \
-            --title "设计台 $GITHUB_REF_NAME" \
-            --notes "下载“设计台_安装包_Mac和Windows.zip”，解压后：Mac 双击“启动设计台.command”，Windows 双击“启动设计台.bat”。数据保存在本机“文档/设计台数据”，升级不会丢。"
-      - name: 保存为运行产物
-        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
-        uses: actions/upload-artifact@v4
-        with:
-          name: 设计台安装包
-          path: dist-package/设计台_安装包_Mac和Windows.zip
+          tag="v$(node -p "require('./package.json').version")"
+          echo "tag=$tag" >> "$GITHUB_OUTPUT"
+          if gh release view "$tag" >/dev/null 2>&1; then echo "exists=true" >> "$GITHUB_OUTPUT"; else echo "exists=false" >> "$GITHUB_OUTPUT"; fi
+      - name: 版本已发布
+        if: steps.version.outputs.exists == 'true' && github.event_name == 'push'
+        run: echo "${{ steps.version.outputs.tag }} 已经发布过，没有改版本号就不重复打包。" >> "$GITHUB_STEP_SUMMARY"
+      - if: steps.version.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
+        run: npm ci && npx tsc --noEmit && bash packaging/build-package.sh dist-package
+      - name: 发布到 Releases
+        if: steps.version.outputs.exists == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "${{ steps.version.outputs.tag }}" "dist-package/设计台_安装包_Mac和Windows.zip" \
+            --target "$GITHUB_SHA" \
+            --title "设计台 ${{ steps.version.outputs.tag }}" \
+            --notes "下载“设计台_安装包_Mac和Windows.zip”，解压后：Mac 双击“启动设计台.command”，Windows 双击“启动设计台.bat”。数据保存在本机“文档/设计台数据”，换新版本不会丢。"
+      - name: 更新已发布版本的安装包
+        if: steps.version.outputs.exists == 'true' && github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload "${{ steps.version.outputs.tag }}" "dist-package/设计台_安装包_Mac和Windows.zip" --clobber

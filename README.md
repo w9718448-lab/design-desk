@@ -21,7 +21,7 @@ bash packaging/build-package.sh     # 打 Mac + Windows 通用包到 dist-packag
 node demo/build.mjs <输出目录>       # 打纯静态展示版（数据只在浏览器内存里）
 ```
 
-发布新版本：推送标签 `git tag v0.4.0 && git push origin v0.4.0`，GitHub Actions 会自动打包并发布到 Releases。
+发布新版本：把 `package.json` 里的 `version` 改大（例如 0.4.0 → 0.5.0）推到 main，GitHub Actions 会自动打包并发布成 Releases 里的 v0.5.0。
 
 ## 结构
 
