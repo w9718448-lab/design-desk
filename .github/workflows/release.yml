@@ -37,18 +37,26 @@ jobs:
         if: steps.version.outputs.exists == 'true' && github.event_name == 'push'
         run: echo "${{ steps.version.outputs.tag }} 已经发布过，没有改版本号就不重复打包。" >> "$GITHUB_STEP_SUMMARY"
       - if: steps.version.outputs.exists == 'false' || github.event_name == 'workflow_dispatch'
-        run: npm ci && npx tsc --noEmit && bash packaging/build-package.sh dist-package
+        run: |
+          npm ci && npx tsc --noEmit && bash packaging/build-package.sh dist-package
+          # GitHub 附件名不支持中文，换成英文文件名，显示名用中文。
+          mv "dist-package/设计台_安装包_Mac和Windows.zip" "dist-package/DesignDesk-${{ steps.version.outputs.tag }}-Mac-Windows.zip"
       - name: 发布到 Releases
         if: steps.version.outputs.exists == 'false'
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "${{ steps.version.outputs.tag }}" "dist-package/设计台_安装包_Mac和Windows.zip" \
+          gh release create "${{ steps.version.outputs.tag }}" "dist-package/DesignDesk-${{ steps.version.outputs.tag }}-Mac-Windows.zip#设计台安装包（Mac 和 Windows 通用）" \
             --target "$GITHUB_SHA" \
             --title "设计台 ${{ steps.version.outputs.tag }}" \
-            --notes "下载“设计台_安装包_Mac和Windows.zip”，解压后：Mac 双击“启动设计台.command”，Windows 双击“启动设计台.bat”。数据保存在本机“文档/设计台数据”，换新版本不会丢。"
+            --notes "下载“设计台安装包（Mac 和 Windows 通用）”，解压后：Mac 双击“启动设计台.command”，Windows 双击“启动设计台.bat”。数据保存在本机“文档/设计台数据”，换新版本不会丢。"
       - name: 更新已发布版本的安装包
         if: steps.version.outputs.exists == 'true' && github.event_name == 'workflow_dispatch'
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh release upload "${{ steps.version.outputs.tag }}" "dist-package/设计台_安装包_Mac和Windows.zip" --clobber
+        run: |
+          tag="${{ steps.version.outputs.tag }}"
+          # 清掉旧的、文件名不对的附件，再传新包。
+          gh api "repos/$GITHUB_REPOSITORY/releases/tags/$tag" --jq '.assets[] | select(.name | startswith("DesignDesk-") | not) | .id' \
+            | xargs -r -I{} gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/assets/{}"
+          gh release upload "$tag" "dist-package/DesignDesk-$tag-Mac-Windows.zip#设计台安装包（Mac 和 Windows 通用）" --clobber
