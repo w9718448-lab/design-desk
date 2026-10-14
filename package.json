@@ -7,7 +7,11 @@
     "dev": "next dev --hostname 127.0.0.1 --port 4180",
     "build": "next build --webpack",
     "start": "next start --hostname 127.0.0.1 --port 4180",
-    "check": "tsc --noEmit && next build --webpack"
+    "check": "tsc --noEmit && next build --webpack",
+    "preview": "next build --webpack && cp -r .next/static .next/standalone/.next/ && DESIGN_DESK_DATA_DIR=./.local-data PORT=4180 HOSTNAME=127.0.0.1 node .next/standalone/server.js",
+    "demo": "node demo/build.mjs",
+    "package": "bash packaging/build-package.sh",
+    "test:flow": "node tests/flow.cjs"
   },
   "dependencies": {
     "next": "16.3.3",

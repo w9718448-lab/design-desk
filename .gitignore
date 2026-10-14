@@ -8,3 +8,5 @@ release
 demo/dist/
 demo/shims/actions.ts
 dist-package/
+tests/out/
+.local-data/
