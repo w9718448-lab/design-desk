@@ -1,0 +1,3 @@
+.demo-banner { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 10px 14px; border-radius: 12px; border: 1px dashed var(--line-strong); background: var(--accent-tint); font-size: var(--fs-meta); }
+.demo-banner strong { color: var(--accent); }
+.demo-banner span { flex: 1; min-width: 200px; color: var(--muted); }

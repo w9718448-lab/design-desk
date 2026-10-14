@@ -5,6 +5,7 @@ import { runReview, type ReviewState } from "@/app/actions";
 import type { Draft, Role } from "@/lib/types";
 import { FileThumb } from "./file-thumb";
 import { Submit } from "./submit";
+import { fileUrl } from "@/lib/file-url";
 
 export function ReviewForm({ briefId, aiReady, drafts, roles }: { briefId: string; aiReady: boolean; drafts: Draft[]; roles: Role[] }) {
   // 默认选最新的一张图片稿，模型能直接看。
@@ -18,7 +19,7 @@ export function ReviewForm({ briefId, aiReady, drafts, roles }: { briefId: strin
         {drafts.map((draft) => (
           <label key={draft.id} className="draft-option">
             <input type="radio" name="draftId" value={draft.id} defaultChecked={draft.id === preferred} />
-            <FileThumb src={`/api/uploads/${draft.image}`} kind={draft.kind} name={draft.imageName} />
+            <FileThumb src={fileUrl("uploads", draft.image)} kind={draft.kind} name={draft.imageName} />
             <span>{draft.version}</span>
           </label>
         ))}

@@ -6,6 +6,7 @@ import { Icon } from "@/components/icons";
 import { Submit } from "@/components/submit";
 import { modelStatus } from "@/lib/ai";
 import { briefFields, type Brief, type Store } from "@/lib/types";
+import { fileUrl } from "@/lib/file-url";
 
 export async function BriefStep({ brief }: { store: Store; brief: Brief }) {
   const status = await modelStatus();
@@ -54,7 +55,7 @@ export async function BriefStep({ brief }: { store: Store; brief: Brief }) {
           <div className="ref-strip">
             {brief.refs.map((ref) => (
               <figure key={ref.id} className="ref-chip">
-                <a href={`/api/uploads/${ref.file}`} target="_blank" className="asset-thumb"><FileThumb src={`/api/uploads/${ref.file}`} kind={ref.kind} name={ref.name} /></a>
+                <a href={fileUrl("uploads", ref.file)} target="_blank" className="asset-thumb"><FileThumb src={fileUrl("uploads", ref.file)} kind={ref.kind} name={ref.name} /></a>
                 <figcaption>
                   <span title={ref.name}>{ref.name}</span>
                   <form action={deleteBriefRef}>

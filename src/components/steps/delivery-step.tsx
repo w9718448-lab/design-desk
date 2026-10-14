@@ -4,6 +4,7 @@ import { CopyButton } from "@/components/copy-button";
 import { FileThumb } from "@/components/file-thumb";
 import Link from "next/link";
 import type { Brief, Store } from "@/lib/types";
+import { fileUrl } from "@/lib/file-url";
 
 const standardChecks = [
   "终稿文案已经由需求方确认",
@@ -41,7 +42,7 @@ export function DeliveryStep({ store, brief }: { store: Store; brief: Brief }) {
             {drafts.map((draft) => (
               <label key={draft.id} className="draft-option">
                 <input type="radio" name="finalDraftId" value={draft.id} defaultChecked={draft.id === final?.id} />
-                <FileThumb src={`/api/uploads/${draft.image}`} kind={draft.kind} name={draft.imageName} />
+                <FileThumb src={fileUrl("uploads", draft.image)} kind={draft.kind} name={draft.imageName} />
                 <span>{draft.version}</span>
               </label>
             ))}

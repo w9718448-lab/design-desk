@@ -5,6 +5,7 @@ import { Icon } from "@/components/icons";
 import { Submit } from "@/components/submit";
 import { readStore, stageOf } from "@/lib/store";
 import type { Brief, Store } from "@/lib/types";
+import { fileUrl } from "@/lib/file-url";
 
 export const dynamic = "force-dynamic";
 
@@ -13,7 +14,7 @@ const date = (iso: string) => new Date(iso).toLocaleDateString("zh-CN", { timeZo
 function Row({ brief, store, deleted }: { brief: Brief; store: Store; deleted?: boolean }) {
   const draft = store.drafts.find((item) => item.id === brief.finalDraftId);
   const asset = store.assets.find((item) => item.id === brief.finalAssetId);
-  const thumb = asset ? { src: `/api/assets/${asset.file}`, kind: asset.kind, name: asset.name } : draft ? { src: `/api/uploads/${draft.image}`, kind: draft.kind, name: draft.imageName } : null;
+  const thumb = asset ? { src: fileUrl("assets", asset.file), kind: asset.kind, name: asset.name } : draft ? { src: fileUrl("uploads", draft.image), kind: draft.kind, name: draft.imageName } : null;
   const reviews = store.reviews.filter((review) => review.briefId === brief.id).length;
   const drafts = store.drafts.filter((item) => item.briefId === brief.id).length;
   const meta = deleted

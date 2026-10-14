@@ -6,6 +6,7 @@ import { Icon } from "@/components/icons";
 import { Submit } from "@/components/submit";
 import { modelStatus } from "@/lib/ai";
 import { severityLabel, type Brief, type Finding, type Review, type Store } from "@/lib/types";
+import { fileUrl } from "@/lib/file-url";
 
 function FindingRow({ review, finding }: { review: Review; finding: Finding }) {
   const isCheck = finding.severity === "check";
@@ -64,7 +65,7 @@ export async function ReviewStep({ store, brief }: { store: Store; brief: Brief 
         return (
           <section key={review.id} className="panel review">
             <div className="review-head">
-              <a href={`/api/uploads/${review.image}`} target="_blank" className="thumb"><FileThumb src={`/api/uploads/${review.image}`} kind={/\.(png|jpe?g|webp|gif)$/i.test(review.image) ? "image" : "file"} name={review.imageName} /></a>
+              <a href={fileUrl("uploads", review.image)} target="_blank" className="thumb"><FileThumb src={fileUrl("uploads", review.image)} kind={/\.(png|jpe?g|webp|gif)$/i.test(review.image) ? "image" : "file"} name={review.imageName} /></a>
               <div>
                 <h2>{review.version}</h2>
                 <p className="muted">

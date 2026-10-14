@@ -8,6 +8,7 @@ import { Dropzone } from "@/components/dropzone";
 import { FileThumb } from "@/components/file-thumb";
 import { directionText, promptText } from "@/lib/direction";
 import type { Brief, Store } from "@/lib/types";
+import { fileUrl } from "@/lib/file-url";
 
 export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
   const drafts = store.drafts.filter((draft) => draft.briefId === brief.id);
@@ -16,9 +17,9 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
   const imageAssets = store.assets.filter((asset) => asset.kind === "image");
   const assetById = new Map(store.assets.map((asset) => [asset.id, asset]));
   const images: CardImage[] = [
-    ...brief.refs.filter((ref) => ref.kind === "image").map((ref) => ({ src: `/api/uploads/${ref.file}`, label: ref.name, tag: "固定" })),
-    ...brief.styleRefs.map((ref) => assetById.get(ref.assetId)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: `/api/assets/${asset!.file}`, label: asset!.name, tag: "风格" })),
-    ...brief.cardAssetIds.map((id) => assetById.get(id)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: `/api/assets/${asset!.file}`, label: asset!.name, tag: "参考" })),
+    ...brief.refs.filter((ref) => ref.kind === "image").map((ref) => ({ src: fileUrl("uploads", ref.file), label: ref.name, tag: "固定" })),
+    ...brief.styleRefs.map((ref) => assetById.get(ref.assetId)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: fileUrl("assets", asset!.file), label: asset!.name, tag: "风格" })),
+    ...brief.cardAssetIds.map((id) => assetById.get(id)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: fileUrl("assets", asset!.file), label: asset!.name, tag: "参考" })),
   ].filter((item, index, list) => list.findIndex((other) => other.src === item.src) === index);
   const short = (value: string, limit = 90) => (value.length > limit ? `${value.slice(0, limit)}…` : value);
   const rows = (["background", "goal", "audience", "deliverables", "tone"] as const)
@@ -47,7 +48,7 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
                     <input type="hidden" name="id" value={brief.id} />
                     <input type="hidden" name="assetId" value={asset.id} />
                     <button type="submit" title={on ? `从卡片移除${asset.name}` : `把${asset.name}加进卡片`} aria-pressed={on}>
-                      <img src={`/api/assets/${asset.file}`} alt={asset.name} loading="lazy" />
+                      <img src={fileUrl("assets", asset.file)} alt={asset.name} loading="lazy" />
                       <span className="picker-mark"><Icon name={on ? "check" : "plus"} size={14} /></span>
                     </button>
                   </form>
@@ -107,7 +108,7 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
         <div className="draft-grid">
           {drafts.map((draft) => (
             <article key={draft.id} className="draft-card">
-              <a href={`/api/uploads/${draft.image}${draft.kind === "image" ? "" : `?download=${encodeURIComponent(draft.imageName)}`}`} target="_blank" className="asset-thumb"><FileThumb src={`/api/uploads/${draft.image}`} kind={draft.kind} name={draft.imageName} /></a>
+              <a href={fileUrl("uploads", draft.image, draft.kind === "image" ? undefined : draft.imageName)} target="_blank" className="asset-thumb"><FileThumb src={fileUrl("uploads", draft.image)} kind={draft.kind} name={draft.imageName} /></a>
               <div className="match-body">
                 <strong>{draft.version}</strong>
                 <small className="muted">{new Date(draft.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{draft.note ? ` · ${draft.note}` : ""}</small>

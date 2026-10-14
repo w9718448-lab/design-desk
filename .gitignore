@@ -5,3 +5,5 @@ data
 *.tsbuildinfo
 next-env.d.ts
 release
+demo/dist/
+demo/shims/actions.ts

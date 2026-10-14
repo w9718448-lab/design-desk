@@ -6,6 +6,7 @@ import { Submit } from "@/components/submit";
 import { modelStatus } from "@/lib/ai";
 import { pickedPaths } from "@/lib/ideas";
 import type { Brief, Store } from "@/lib/types";
+import { fileUrl } from "@/lib/file-url";
 
 export async function StyleStep({ store, brief }: { store: Store; brief: Brief }) {
   const status = await modelStatus();
@@ -62,7 +63,7 @@ export async function StyleStep({ store, brief }: { store: Store; brief: Brief }
             {brief.styleRefs.map((ref) => {
               const asset = store.assets.find((item) => item.id === ref.assetId);
               if (!asset) return null;
-              return <StyleRefEditor key={ref.assetId} briefId={brief.id} assetId={asset.id} src={`/api/assets/${asset.file}`} name={asset.name} initialNote={ref.note} initialBox={ref.box} />;
+              return <StyleRefEditor key={ref.assetId} briefId={brief.id} assetId={asset.id} src={fileUrl("assets", asset.file)} name={asset.name} initialNote={ref.note} initialBox={ref.box} />;
             })}
           </div>
         </section>
@@ -77,7 +78,7 @@ export async function StyleStep({ store, brief }: { store: Store; brief: Brief }
             const selected = chosen.has(asset.id);
             return (
               <article key={asset.id} className={`asset-card match ${selected ? "is-selected" : ""} ${score && score.score > 0 ? "has-score" : ""}`}>
-                <div className="asset-thumb"><img src={`/api/assets/${asset.file}`} alt={asset.name} loading="lazy" /></div>
+                <div className="asset-thumb"><img src={fileUrl("assets", asset.file)} alt={asset.name} loading="lazy" /></div>
                 <div className="match-body">
                   <div className="panel-head">
                     <strong>{asset.name}</strong>

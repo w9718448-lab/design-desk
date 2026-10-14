@@ -6,6 +6,7 @@ import { Icon } from "@/components/icons";
 import { Submit } from "@/components/submit";
 import { searchAssets } from "@/lib/assets";
 import { readStore } from "@/lib/store";
+import { fileUrl } from "@/lib/file-url";
 
 export const dynamic = "force-dynamic";
 
@@ -84,8 +85,8 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
       ) : (
         <div className="asset-grid simple">
           {list.map((asset) => {
-            const src = `/api/assets/${asset.file}`;
-            const open = asset.kind === "image" ? src : `${src}?download=${encodeURIComponent(`${asset.name}.${asset.file.split(".").pop()}`)}`;
+            const src = fileUrl("assets", asset.file);
+            const open = asset.kind === "image" ? src : fileUrl("assets", asset.file, `${asset.name}.${asset.file.split(".").pop()}`);
             return (
               <article key={`${asset.id}-${asset.name}-${asset.folderId}`} className="asset-card">
                 <a href={open} target="_blank" className="asset-thumb" title={asset.kind === "image" ? "看大图" : "下载"}><FileThumb src={src} kind={asset.kind} name={asset.name} /></a>
