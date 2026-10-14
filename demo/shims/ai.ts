@@ -4,9 +4,11 @@ export const providers = {
   deepseek: { name: "DeepSeek", baseUrl: "", text: "deepseek-chat", vision: "" },
 } as const;
 export type ProviderId = keyof typeof providers;
+export type SecretId = ProviderId | "doubao" | "openai";
+export const secretIds: SecretId[] = ["qwen", "deepseek", "doubao", "openai"];
 export async function getSecret() { return null; }
 export async function saveSecret() { window.alert("这是展示版，不保存密钥。下载设计台装到自己电脑上后，就能配置千问。"); }
 export async function removeSecret() { return; }
-export async function modelStatus() { return { qwen: false, deepseek: false }; }
+export async function modelStatus() { return { qwen: false, deepseek: false, doubao: false, openai: false }; }
 export async function aiJson() { return null; }
 export async function aiVisionJson() { return null; }

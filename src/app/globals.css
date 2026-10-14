@@ -705,3 +705,32 @@ input[type="file"]::file-selector-button {
 .brief-peek { grid-template-columns: minmax(0, 1fr); }
 .brief-peek summary .muted { font-weight: var(--fw-regular, 400); }
 .mind-node:focus { outline: none; } .mind-node:focus-visible rect { stroke: var(--accent); stroke-width: 3; }
+
+/* v5 生成效果图 */
+.gen-form { display: grid; gap: 14px; }
+.gen-form .form-row { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr) minmax(0, 1fr); gap: 12px; }
+.gen-form textarea { min-height: 120px; resize: vertical; }
+.gen-refs { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; min-width: 0; }
+.gen-refs legend { margin-bottom: 8px; font-size: var(--fs-meta); color: var(--muted); }
+.gen-ref-list { display: flex; gap: 10px; flex-wrap: wrap; }
+.gen-ref { position: relative; display: grid; gap: 4px; justify-items: center; width: 88px; padding: 6px; border: 1px solid var(--line); border-radius: 12px; cursor: pointer; font-size: var(--fs-caption); color: var(--muted); opacity: .55; transition: opacity .15s, border-color .15s; }
+.gen-ref input { position: absolute; opacity: 0; pointer-events: none; }
+.gen-ref img { width: 100%; aspect-ratio: 1; object-fit: cover; border-radius: 8px; }
+.gen-ref:has(input:checked) { opacity: 1; border-color: var(--accent); background: var(--grad-soft); color: var(--ink); }
+.gen-ref:has(input:focus-visible) { box-shadow: var(--focus); }
+.gen-empty p { margin: 0; color: var(--muted); }
+.gen-empty a { color: var(--accent); }
+.image-settings { display: grid; gap: 14px; margin-top: 14px; }
+.image-settings fieldset { border: 0; margin: 0; padding: 0; }
+.image-settings legend { margin-bottom: 8px; font-size: var(--fs-meta); color: var(--muted); }
+.radio-row { display: flex; gap: 8px; flex-wrap: wrap; }
+.radio-pill { position: relative; cursor: pointer; }
+.radio-pill input { position: absolute; opacity: 0; pointer-events: none; }
+.radio-pill span { display: inline-block; padding: 6px 14px; border: 1px solid var(--line); border-radius: 999px; font-size: var(--fs-meta); }
+.radio-pill input:checked + span { border-color: var(--accent); background: var(--grad-soft); color: var(--accent); }
+.radio-pill input:focus-visible + span { box-shadow: var(--focus); }
+.model-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+.model-grid input { font-family: var(--mono); font-size: var(--fs-meta); }
+@media (max-width: 720px) {
+  .gen-form .form-row, .model-grid { grid-template-columns: minmax(0, 1fr); }
+}

@@ -72,6 +72,23 @@ const PET = fs.readFileSync(path.join(__dirname, 'sample-brief.txt'), 'utf8');
   await dl.saveAs(`${OUT}/${tag}-${theme}-card.png`);
   log('scrollW', await page.evaluate(() => [document.documentElement.scrollWidth, ...[...document.querySelectorAll('body *')].filter(e => e.getBoundingClientRect().right > 1450).slice(0,5).map(e => e.tagName + '.' + e.className + ':' + Math.round(e.getBoundingClientRect().width))]));
   await shot('draft', true);
+  // 生成效果图：ai 模式下用假接口（tests/mock-ai.cjs）跑通义万相和豆包；local 模式下应提示去配置 Key。
+  if (tag === 'ai') {
+    log('gen providers', await page.$$eval('#gen-provider option', e => e.map(x => x.textContent + (x.disabled ? ' [off]' : ''))), 'aspect', await page.inputValue('#gen-aspect'), 'refs', await page.$$eval('.gen-ref input', e => e.map(x => x.checked)));
+    await page.click('.gen-form button[type=submit]');
+    await page.waitForSelector('.gen-form .form-ok, .gen-form .form-error', { timeout: 60000 });
+    log('gen tongyi', await page.textContent('.gen-form [role=status], .gen-form [role=alert]'));
+    await settle();
+    await page.selectOption('#gen-provider', 'doubao'); await page.selectOption('#gen-count', '1'); await page.selectOption('#gen-aspect', '16:9');
+    await page.click('.gen-form button[type=submit]');
+    await page.waitForFunction(() => document.querySelector('.gen-form [role=status], .gen-form [role=alert]')?.textContent?.includes('1 张') || document.querySelector('.gen-form [role=alert]'), null, { timeout: 60000 });
+    log('gen doubao', await page.textContent('.gen-form [role=status], .gen-form [role=alert]'));
+    await settle();
+    log('ai drafts', await page.$$eval('.draft-card', e => e.map(x => x.querySelector('strong').textContent + ' | ' + x.querySelector('small').textContent.split(' · ').slice(1).join(' · '))));
+    await page.locator('#generate').screenshot({ path: `${OUT}/${tag}-${theme}-generate.png` });
+  } else {
+    log('gen empty', await page.locator('.gen-empty').count());
+  }
   await page.setInputFiles('.dropzone input[name=files]', [img('winter-solstice-round1-b.png', '宠味食刻KV_v1.png')]);
   await page.waitForSelector('.draft-card', { timeout: 20000 }); await settle();
   await page.locator('#draft-from-asset').selectOption({ index: 0 });
@@ -103,7 +120,10 @@ const PET = fs.readFileSync(path.join(__dirname, 'sample-brief.txt'), 'utf8');
   await page.locator('.history-group').nth(0).locator('.confirm-pop summary').first().click();
   await page.locator('.history-group').nth(0).locator('.confirm-box button').first().click(); await settle();
   log('after purge', await page.$$eval('.history-main strong', e => e.map(x => x.textContent)));
-  await page.click('.nav-foot-link:has-text("设置")'); await settle(); await shot('settings');
+  await page.click('.nav-foot-link:has-text("设置")'); await settle(); await shot('settings', true);
+  await page.click('.radio-pill:has-text("豆包")'); await page.fill('#model-doubao', 'doubao-seedream-4-5-test');
+  await page.click('button:has-text("保存生图设置")'); await settle(); await page.reload(); await settle();
+  log('image settings', await page.inputValue('#model-doubao'), await page.$eval('.radio-pill input:checked', e => e.value));
   await page.click('.settings-tabs a:has-text("评审角色")'); await settle(); await shot('roles');
   await page.goto(base); await shot('home');
   log('errors', errors);

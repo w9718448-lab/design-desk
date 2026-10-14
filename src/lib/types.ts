@@ -176,8 +176,13 @@ export const defaultFolders: Folder[] = [
   { id: "collected", name: "收集的素材" },
 ];
 
+// 生图设置：默认用哪家、每家用哪个模型（模型名可以自己改，各家出新模型时不用改代码）。
+export type ImageProviderId = "tongyi" | "doubao" | "openai";
+export type ImageSettings = { provider: ImageProviderId; models: Partial<Record<ImageProviderId, string>> };
+
 export type Store = {
   version: 3;
+  imageSettings?: ImageSettings;
   folders: Folder[];
   briefs: Brief[];
   rules: Rule[];

@@ -4,13 +4,15 @@ import fs from "node:fs";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { extractBrief, mergeFields } from "@/lib/brief";
-import { fileError, kindOf, saveFile } from "@/lib/files";
+import { fileError, kindOf, mime, saveBuffer, saveFile } from "@/lib/files";
 import { aiReview, localChecks } from "@/lib/review";
 import { expandMindNode, pickedPaths, seedMindmap } from "@/lib/ideas";
 import { localTags, matchAssets, searchAssets, tagAsset } from "@/lib/assets";
 import { dataPath, newId, normalizeBrief, now, readStore, stageOf, updateStore } from "@/lib/store";
-import { removeSecret, saveSecret, type ProviderId } from "@/lib/ai";
-import { briefFields, defaultRoles, ruleLayers, steps, type Box, type Brief, type BriefFieldKey, type FieldStatus, type MindNode, type Review, type RuleLayer, type StepKey, type Store } from "@/lib/types";
+import { removeSecret, saveSecret, secretIds, type SecretId } from "@/lib/ai";
+import { generateImages, type RefImage } from "@/lib/image-gen";
+import { aspects, imageProviderIds, imageProviders, imageSettingsOf, modelOf, type Aspect } from "@/lib/image-models";
+import { briefFields, defaultRoles, type ImageProviderId, ruleLayers, steps, type Box, type Brief, type BriefFieldKey, type FieldStatus, type MindNode, type Review, type RuleLayer, type StepKey, type Store } from "@/lib/types";
 
 const text = (form: FormData, key: string) => String(form.get(key) || "").trim();
 
@@ -379,6 +381,72 @@ export async function uploadDraft(_: UploadState, form: FormData): Promise<Uploa
   return { message: files.length > 1 ? `已放进 ${files.length} 个文件。` : "已放进稿件。" };
 }
 
+export type GenState = { error?: string; message?: string };
+
+// 用设计卡片的提示词和参考图生成效果图，结果直接放进稿件，能拿去评审和交付。
+export async function generateDrafts(_: GenState, form: FormData): Promise<GenState> {
+  const briefId = text(form, "briefId");
+  const store = readStore();
+  const brief = findBrief(store, briefId);
+  if (!brief) return { error: "找不到这个项目。" };
+  const settings = imageSettingsOf(store.imageSettings);
+  const provider = (imageProviderIds.includes(text(form, "provider") as ImageProviderId) ? text(form, "provider") : settings.provider) as ImageProviderId;
+  const aspect = (aspects.some((item) => item.key === text(form, "aspect")) ? text(form, "aspect") : "3:4") as Aspect;
+  const count = Math.min(4, Math.max(1, Number(text(form, "count")) || 1));
+  const prompt = text(form, "prompt");
+  if (!prompt) return { error: "提示词是空的，先写几句想要的画面。" };
+
+  // 勾选的参考图：固定参考、风格参考和卡片里加的资产库图片。
+  const refs: RefImage[] = [];
+  for (const value of form.getAll("ref").map(String)) {
+    const [folder, file] = value.split("/");
+    if ((folder !== "uploads" && folder !== "assets") || !/^IMG-[a-f0-9]+\.(png|jpe?g|webp)$/.test(file)) continue;
+    try {
+      const data = fs.readFileSync(dataPath(folder, file));
+      if (data.length <= 10 * 1024 * 1024) refs.push({ data, mime: mime[file.split(".").pop()!] || "image/png", name: file });
+    } catch { /* 文件被删了就跳过 */ }
+  }
+
+  let result;
+  try {
+    result = await generateImages({ provider, model: modelOf(settings, provider), prompt, aspect, count, refs });
+  } catch (cause) {
+    return { error: `生成失败：${cause instanceof Error ? cause.message : "未知原因"}` };
+  }
+  const names: string[] = [];
+  for (const image of result.images) names.push(await saveBuffer(image, "png", "uploads"));
+  await updateStore((current) => {
+    const target = findBrief(current, briefId);
+    if (!target) return;
+    for (const name of names) {
+      const count = current.drafts.filter((item) => item.briefId === briefId).length;
+      current.drafts.unshift({
+        id: newId("D"), briefId, version: `第 ${count + 1} 版 · AI`, image: name, imageName: `${target.title}-AI-${count + 1}.png`, kind: "image",
+        note: `${imageProviders[provider].name} ${result.model} · ${aspect}${refs.length ? ` · ${refs.length} 张参考图` : ""}`, createdAt: now(),
+      });
+    }
+    touch(target);
+  });
+  refresh();
+  return { message: `已生成 ${names.length} 张，放进了下面的稿件。` };
+}
+
+export async function saveImageSettings(form: FormData) {
+  await updateStore((store) => {
+    const settings = imageSettingsOf(store.imageSettings);
+    const provider = text(form, "provider") as ImageProviderId;
+    if (imageProviderIds.includes(provider)) settings.provider = provider;
+    for (const id of imageProviderIds) {
+      if (!form.has(`model-${id}`)) continue;
+      const model = text(form, `model-${id}`);
+      if (model && model !== imageProviders[id].model) settings.models[id] = model;
+      else delete settings.models[id];
+    }
+    store.imageSettings = settings;
+  });
+  refresh();
+}
+
 export async function toggleCardAsset(form: FormData) {
   const id = text(form, "id");
   const assetId = text(form, "assetId");
@@ -607,9 +675,9 @@ export async function updateRule(form: FormData) {
 /* ---------- 设置 ---------- */
 
 export async function saveKey(form: FormData) {
-  const provider = text(form, "provider") as ProviderId;
+  const provider = text(form, "provider") as SecretId;
   const key = text(form, "key");
-  if (!["qwen", "deepseek"].includes(provider)) return;
+  if (!secretIds.includes(provider)) return;
   if (form.get("intent") === "remove") await removeSecret(provider);
   else if (key) await saveSecret(provider, key);
   refresh();

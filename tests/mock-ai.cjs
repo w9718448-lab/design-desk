@@ -1,9 +1,38 @@
 const http = require('http');
+const fs = require('fs');
+const path = require('path');
 let n = 0;
+// 生图测试用的示例图：随便取展示版里的一张。
+const dir = path.join(__dirname, '..', 'demo', 'public', 'files', 'assets');
+const png = fs.readFileSync(path.join(dir, fs.readdirSync(dir).find(f => f.endsWith('.png'))));
+const images = [];
 http.createServer((req, res) => {
   let body = '';
   req.on('data', c => body += c);
   req.on('end', () => {
+    const send = (data) => { res.setHeader('Content-Type', 'application/json'); res.end(JSON.stringify(data)); };
+    if (req.url.startsWith('/img/')) { res.setHeader('Content-Type', 'image/png'); return res.end(png); }
+    if (req.url.includes('multimodal-generation')) {
+      const json = JSON.parse(body);
+      const refs = json.input.messages[0].content.filter(c => c.image).length;
+      images.push({ provider: 'tongyi', model: json.model, size: json.parameters.size, n: json.parameters.n, refs });
+      console.log('mock image tongyi', json.model, json.parameters.size, 'n=' + json.parameters.n, 'refs=' + refs);
+      return send({ output: { choices: [{ message: { content: Array.from({ length: json.parameters.n }, (_, i) => ({ type: 'image', image: `http://127.0.0.1:4999/img/${i}.png` })) } }] } });
+    }
+    if (req.url.includes('/api/v3/images/generations')) {
+      const json = JSON.parse(body);
+      images.push({ provider: 'doubao', model: json.model, size: json.size, refs: (json.image || []).length });
+      console.log('mock image doubao', json.model, json.size, 'refs=' + (json.image || []).length);
+      return send({ data: [{ b64_json: png.toString('base64') }] });
+    }
+    if (req.url.includes('/v1/images/')) {
+      const edits = req.url.includes('edits');
+      const count = edits ? Number((body.match(/name="n"\r\n\r\n(\d)/) || [0, 1])[1]) : JSON.parse(body).n;
+      images.push({ provider: 'openai', edits, n: count });
+      console.log('mock image openai', edits ? 'edits' : 'generations', 'n=' + count);
+      return send({ data: Array.from({ length: count }, () => ({ b64_json: png.toString('base64') })) });
+    }
+    if (req.url === '/calls') return send(images);
     const json = JSON.parse(body);
     const system = json.messages[0].content;
     const user = json.messages[1].content;

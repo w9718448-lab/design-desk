@@ -9,18 +9,25 @@ import { FileThumb } from "@/components/file-thumb";
 import { directionText, promptText } from "@/lib/direction";
 import type { Brief, Store } from "@/lib/types";
 import { fileUrl } from "@/lib/file-url";
+import { imageReady } from "@/lib/image-gen";
+import { guessAspect, imageProviderIds, imageProviders, imageSettingsOf, modelOf } from "@/lib/image-models";
+import { ImageGenForm, type GenRef } from "@/components/image-gen-form";
 
-export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
+export async function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
   const drafts = store.drafts.filter((draft) => draft.briefId === brief.id);
   const direction = directionText(brief, store);
   const prompt = promptText(brief, store);
   const imageAssets = store.assets.filter((asset) => asset.kind === "image");
   const assetById = new Map(store.assets.map((asset) => [asset.id, asset]));
-  const images: CardImage[] = [
-    ...brief.refs.filter((ref) => ref.kind === "image").map((ref) => ({ src: fileUrl("uploads", ref.file), label: ref.name, tag: "固定" })),
-    ...brief.styleRefs.map((ref) => assetById.get(ref.assetId)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: fileUrl("assets", asset!.file), label: asset!.name, tag: "风格" })),
-    ...brief.cardAssetIds.map((id) => assetById.get(id)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: fileUrl("assets", asset!.file), label: asset!.name, tag: "参考" })),
+  const refImages: GenRef[] = [
+    ...brief.refs.filter((ref) => ref.kind === "image").map((ref) => ({ value: `uploads/${ref.file}`, src: fileUrl("uploads", ref.file), label: ref.name, tag: "固定" })),
+    ...brief.styleRefs.map((ref) => assetById.get(ref.assetId)).filter((asset) => asset?.kind === "image").map((asset) => ({ value: `assets/${asset!.file}`, src: fileUrl("assets", asset!.file), label: asset!.name, tag: "风格" })),
+    ...brief.cardAssetIds.map((id) => assetById.get(id)).filter((asset) => asset?.kind === "image").map((asset) => ({ value: `assets/${asset!.file}`, src: fileUrl("assets", asset!.file), label: asset!.name, tag: "参考" })),
   ].filter((item, index, list) => list.findIndex((other) => other.src === item.src) === index);
+  const images: CardImage[] = refImages.map(({ src, label, tag }) => ({ src, label, tag }));
+  const ready = await imageReady();
+  const imageSettings = imageSettingsOf(store.imageSettings);
+  const genProviders = imageProviderIds.map((id) => ({ id, name: imageProviders[id].name, model: modelOf(imageSettings, id), ready: ready[id] }));
   const short = (value: string, limit = 90) => (value.length > limit ? `${value.slice(0, limit)}…` : value);
   const rows = (["background", "goal", "audience", "deliverables", "tone"] as const)
     .filter((key) => brief.fields[key].value)
@@ -57,6 +64,16 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
             </div>
           )}
         </details>
+      </section>
+
+      <section className="panel feature" id="generate">
+        <div className="panel-head">
+          <div className="panel-title">
+            <h2>生成效果图</h2>
+            <small className="muted">用上面的提示词和参考图直接出图，生成的图会作为新的一版放进稿件，可以拿去评审、定终稿。</small>
+          </div>
+        </div>
+        <ImageGenForm briefId={brief.id} providers={genProviders} defaultProvider={imageSettings.provider} prompt={prompt} aspect={guessAspect(brief.fields.deliverables.value)} refs={refImages} />
       </section>
 
       <div className="two-col even">

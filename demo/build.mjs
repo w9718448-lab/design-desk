@@ -35,9 +35,9 @@ export type { UploadState } from "../../src/app/actions";
 const exact = {
   "node:fs": shim("fs.ts"), "node:path": shim("path.ts"), "node:crypto": shim("crypto.ts"),
   "server-only": shim("empty.ts"), "next/cache": shim("cache.ts"), "next/navigation": shim("navigation.ts"), "next/link": shim("link.tsx"),
-  "@/app/actions": shim("actions.ts"), "@/lib/ai": shim("ai.ts"), "@/lib/files": shim("lib-files.ts"), "@/lib/file-url": shim("file-url.ts"),
+  "@/app/actions": shim("actions.ts"), "@/lib/ai": shim("ai.ts"), "@/lib/files": shim("lib-files.ts"), "@/lib/file-url": shim("file-url.ts"), "@/lib/image-gen": shim("image-gen.ts"),
 };
-const relative = { "./ai": shim("ai.ts"), "./files": shim("lib-files.ts"), "./file-url": shim("file-url.ts") };
+const relative = { "./ai": shim("ai.ts"), "./files": shim("lib-files.ts"), "./file-url": shim("file-url.ts"), "./image-gen": shim("image-gen.ts") };
 
 const demoPlugin = {
   name: "design-desk-demo",

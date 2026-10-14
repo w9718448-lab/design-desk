@@ -15,11 +15,15 @@ export const providers = {
 } as const;
 
 export type ProviderId = keyof typeof providers;
+// 生图接口的密钥：通义万相和千问共用阿里云百炼的 Key（qwen），豆包和 OpenAI 各自一把。
+export type SecretId = ProviderId | "doubao" | "openai";
+const secretEnv: Record<SecretId, string> = { qwen: providers.qwen.env, deepseek: providers.deepseek.env, doubao: "ARK_API_KEY", openai: "OPENAI_API_KEY" };
+export const secretIds: SecretId[] = ["qwen", "deepseek", "doubao", "openai"];
 
 // Windows 等非 Mac 电脑没有钥匙串：密钥存在本机数据文件夹里的 模型密钥.json，只在这台电脑上。
 const secretFile = () => dataPath("模型密钥.json");
 
-function readSecretFile(): Partial<Record<ProviderId, string>> {
+function readSecretFile(): Partial<Record<SecretId, string>> {
   try {
     return JSON.parse(fs.readFileSync(secretFile(), "utf8"));
   } catch {
@@ -27,12 +31,12 @@ function readSecretFile(): Partial<Record<ProviderId, string>> {
   }
 }
 
-function writeSecretFile(secrets: Partial<Record<ProviderId, string>>) {
+function writeSecretFile(secrets: Partial<Record<SecretId, string>>) {
   fs.mkdirSync(dataPath(), { recursive: true });
   fs.writeFileSync(secretFile(), JSON.stringify(secrets, null, 2), { mode: 0o600 });
 }
 
-async function keychainSecret(id: ProviderId) {
+async function keychainSecret(id: SecretId) {
   if (process.platform !== "darwin") return readSecretFile()[id]?.trim() || "";
   try {
     const { stdout } = await execFileAsync("/usr/bin/security", ["find-generic-password", "-a", id, "-s", keychainService, "-w"], { timeout: 3000 });
@@ -42,11 +46,11 @@ async function keychainSecret(id: ProviderId) {
   }
 }
 
-export async function getSecret(id: ProviderId) {
-  return process.env[providers[id].env]?.trim() || keychainSecret(id);
+export async function getSecret(id: SecretId) {
+  return process.env[secretEnv[id]]?.trim() || keychainSecret(id);
 }
 
-export async function saveSecret(id: ProviderId, secret: string) {
+export async function saveSecret(id: SecretId, secret: string) {
   if (process.platform !== "darwin") {
     writeSecretFile({ ...readSecretFile(), [id]: secret.trim() });
     return;
@@ -54,7 +58,7 @@ export async function saveSecret(id: ProviderId, secret: string) {
   await execFileAsync("/usr/bin/security", ["add-generic-password", "-U", "-a", id, "-s", keychainService, "-w", secret.trim()], { timeout: 5000 });
 }
 
-export async function removeSecret(id: ProviderId) {
+export async function removeSecret(id: SecretId) {
   if (process.platform !== "darwin") {
     const secrets = readSecretFile();
     delete secrets[id];
@@ -65,8 +69,8 @@ export async function removeSecret(id: ProviderId) {
 }
 
 export async function modelStatus() {
-  const [qwen, deepseek] = await Promise.all([getSecret("qwen"), getSecret("deepseek")]);
-  return { qwen: Boolean(qwen), deepseek: Boolean(deepseek) };
+  const [qwen, deepseek, doubao, openai] = await Promise.all(secretIds.map((id) => getSecret(id)));
+  return { qwen: Boolean(qwen), deepseek: Boolean(deepseek), doubao: Boolean(doubao), openai: Boolean(openai) };
 }
 
 type Content = string | Array<{ type: "text"; text: string } | { type: "image_url"; image_url: { url: string } }>;

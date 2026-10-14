@@ -39,6 +39,14 @@ export async function saveFile(file: File, folder: "uploads" | "assets") {
   return name;
 }
 
+// 生成的图片（没有原始文件名）直接按内容保存。
+export async function saveBuffer(data: Buffer, ext: string, folder: "uploads" | "assets") {
+  const name = `IMG-${newId("x").slice(2)}.${ext}`;
+  fs.mkdirSync(dataPath(folder), { recursive: true });
+  fs.writeFileSync(dataPath(folder, name), data);
+  return name;
+}
+
 export function serveFile(folder: "uploads" | "assets", name: string, request: Request) {
   const match = name.match(storedName);
   if (!match) return new Response("Not found", { status: 404 });

@@ -27,3 +27,9 @@ export async function saveFile(file: File) {
   registerUrl(name, URL.createObjectURL(file));
   return name;
 }
+
+export async function saveBuffer(data: Uint8Array, ext: string) {
+  const name = `IMG-${newId("x").slice(2)}.${ext}`;
+  registerUrl(name, URL.createObjectURL(new Blob([data as BlobPart], { type: "image/png" })));
+  return name;
+}
