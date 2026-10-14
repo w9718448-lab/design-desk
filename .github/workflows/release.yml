@@ -1,0 +1,39 @@
+name: 发布安装包
+
+# 推送 v 开头的标签（例如 v0.4.0）时，自动打 Mac + Windows 通用包并发布到 Releases。
+# 也可以在 Actions 页面手动运行，产物在运行结果的 Artifacts 里。
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npx tsc --noEmit
+      - run: bash packaging/build-package.sh dist-package
+      - name: 发布到 Releases
+        if: startsWith(github.ref, 'refs/tags/')
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create "$GITHUB_REF_NAME" "dist-package/设计台_安装包_Mac和Windows.zip" \
+            --title "设计台 $GITHUB_REF_NAME" \
+            --notes "下载“设计台_安装包_Mac和Windows.zip”，解压后：Mac 双击“启动设计台.command”，Windows 双击“启动设计台.bat”。数据保存在本机“文档/设计台数据”，升级不会丢。"
+      - name: 保存为运行产物
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: 设计台安装包
+          path: dist-package/设计台_安装包_Mac和Windows.zip
