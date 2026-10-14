@@ -1,6 +1,6 @@
 {
   "name": "design-desk",
-  "version": "0.1.0",
+  "version": "0.4.0",
   "private": true,
   "description": "设计台：个人品牌设计工作流（本机运行）",
   "scripts": {
