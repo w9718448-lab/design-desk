@@ -1,4 +1,6 @@
 export const briefFields = [
+  { key: "background", label: "项目背景", hint: "品牌是谁、理念是什么、为什么要做这次设计" },
+  { key: "nature", label: "项目性质", hint: "商业项目、比稿、个人作品集、练习……" },
   { key: "goal", label: "目标", hint: "这张图要达成什么：拉新、招聘、活动告知、品牌形象……" },
   { key: "audience", label: "受众", hint: "谁会看到：候选人、客户、员工、展会观众……" },
   { key: "deliverables", label: "物料与尺寸", hint: "做哪些物料，每个的尺寸或比例" },
@@ -6,7 +8,7 @@ export const briefFields = [
   { key: "deadline", label: "截止时间", hint: "初稿和定稿分别什么时候" },
   { key: "delivery", label: "交付方式", hint: "印刷、线上发布、源文件格式" },
   { key: "copy", label: "文案", hint: "主标题、正文、必须出现的信息由谁提供" },
-  { key: "tone", label: "调性与参考", hint: "想要的感觉，有没有参考或不要的样子" },
+  { key: "tone", label: "视觉调性", hint: "想要的感觉、色彩、图形语言，有没有参考或不要的样子" },
   { key: "production", label: "预算与工艺", hint: "印刷工艺、材质、预算上限" },
   { key: "approver", label: "谁来确认", hint: "由谁拍板定稿（写角色，不写联系方式）" },
 ] as const;
@@ -39,6 +41,8 @@ export type MindNode = {
   expanded: boolean;
 };
 
+export type BriefRef = { id: string; file: string; name: string; kind: FileKind; createdAt: string };
+
 export type Box = { x: number; y: number; w: number; h: number };
 
 export type StyleRef = { assetId: string; note: string; box: Box | null };
@@ -58,8 +62,14 @@ export type Brief = {
   styleMatch?: { signature: string; query?: string; source: "ai" | "local"; items: Array<{ assetId: string; score: number; reason: string }> };
   finalDraftId: string | null;
   finalAssetId?: string;
+  // 需求阶段先固定下来的参考：Logo、指定素材等，出稿时会放进设计卡片。
+  refs: BriefRef[];
+  // 出稿时从资产库额外挑进设计卡片的参考图。
+  cardAssetIds: string[];
   deliveryChecks: string[];
   retro: string;
+  // 删除的项目先放进“历史项目 · 已删除”，可以恢复或彻底删除。
+  deletedAt?: string;
   createdAt: string;
   updatedAt: string;
 };

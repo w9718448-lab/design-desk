@@ -1,3 +1,4 @@
+import { SettingsTabs } from "@/components/settings-tabs";
 import { addRule, updateRule } from "@/app/actions";
 import { Submit } from "@/components/submit";
 import { readStore } from "@/lib/store";
@@ -14,7 +15,7 @@ export default function RulesPage() {
   return (
     <>
       <header className="page-head">
-        <span className="eyebrow">Brand Rules · 感觉 → 原则 → 指引</span>
+        <span className="eyebrow">Settings · 设置</span>
         <h1>品牌规则</h1>
         <p className="muted">先留一个空框架。现在做的是个人项目，可以不写；以后接到有品牌规范的项目，再按“感觉 → 原则 → 指引”三层填进来，评审时会引用这里的规则。</p>
         {store.rules.length > 0 && (
@@ -24,6 +25,7 @@ export default function RulesPage() {
           </div>
         )}
       </header>
+      <SettingsTabs />
 
       <div className="rule-columns">
         {ruleLayers.map((layer) => {

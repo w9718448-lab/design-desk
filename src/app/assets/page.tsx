@@ -2,6 +2,7 @@ import Link from "next/link";
 import { saveFolder, updateAsset, uploadAssets } from "@/app/actions";
 import { Dropzone } from "@/components/dropzone";
 import { FileThumb } from "@/components/file-thumb";
+import { Icon } from "@/components/icons";
 import { Submit } from "@/components/submit";
 import { searchAssets } from "@/lib/assets";
 import { readStore } from "@/lib/store";
@@ -55,7 +56,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
           </Link>
         ))}
         <details key={`new-${store.folders.length}`} className="folder-new">
-          <summary>＋ 新建文件夹</summary>
+          <summary><Icon name="plus" size={14} />新建文件夹</summary>
           <form action={saveFolder} className="inline-form">
             <input type="hidden" name="intent" value="add" />
             <input id="folder-name" name="name" placeholder="文件夹名" maxLength={30} required />
@@ -93,7 +94,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
                   <small className="muted">{store.folders.find((item) => item.id === asset.folderId)?.name || "未分类"}</small>
                 </div>
                 <details className="asset-edit">
-                  <summary>整理</summary>
+                  <summary title="整理：改名、移动、删除" aria-label="整理"><Icon name="edit" size={15} /></summary>
                   <form action={updateAsset} className="stack tight">
                     <input type="hidden" name="id" value={asset.id} />
                     <label className="field"><span>名称</span><input id={`name-${asset.id}`} name="name" defaultValue={asset.name} /></label>
@@ -107,7 +108,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
                     <label className="field"><span>备注（可选）</span><input id={`note-${asset.id}`} name="note" defaultValue={asset.note} placeholder="哪里好、能用在哪" /></label>
                     <div className="asset-actions">
                       <Submit className="button small" name="intent" value="save">保存</Submit>
-                      <Submit className="link-button danger" name="intent" value="delete">删除</Submit>
+                      <Submit className="icon-button danger" name="intent" value="delete" title="删除"><Icon name="trash" /></Submit>
                     </div>
                   </form>
                 </details>

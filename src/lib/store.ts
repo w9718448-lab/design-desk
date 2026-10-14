@@ -3,7 +3,7 @@ import "server-only";
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
-import { defaultFolders, defaultRoles, steps, type Brief, type FileKind, type Stage, type StepKey, type Store } from "./types";
+import { briefFields, defaultFolders, defaultRoles, steps, type Brief, type FileKind, type Stage, type StepKey, type Store } from "./types";
 
 export function dataDir() {
   return process.env.DESIGN_DESK_DATA_DIR || path.join(process.cwd(), "data");
@@ -59,10 +59,13 @@ export function normalizeBrief(brief: Partial<Brief> & Pick<Brief, "id">): Brief
   return {
     title: "新需求", raw: "", stage: "需求", questions: "", source: "local", createdAt: now(), updatedAt: now(),
     ...brief,
-    fields: brief.fields as Brief["fields"],
+    // 新加的需求项（项目背景、项目性质）在旧项目里补成“待确定”。
+    fields: Object.fromEntries(briefFields.map((field) => [field.key, brief.fields?.[field.key] || { value: "", status: "ask" }])) as Brief["fields"],
     stepsDone: brief.stepsDone || stepsFromStage(brief.stage),
     mindmap: brief.mindmap || [],
     styleRefs: brief.styleRefs || [],
+    refs: brief.refs || [],
+    cardAssetIds: brief.cardAssetIds || [],
     finalDraftId: brief.finalDraftId ?? null,
     deliveryChecks: brief.deliveryChecks || [],
     retro: brief.retro || "",

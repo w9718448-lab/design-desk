@@ -1,3 +1,4 @@
+import { SettingsTabs } from "@/components/settings-tabs";
 import { saveRole } from "@/app/actions";
 import { Submit } from "@/components/submit";
 import { readStore } from "@/lib/store";
@@ -9,10 +10,11 @@ export default function RolesPage() {
   return (
     <>
       <header className="page-head">
-        <span className="eyebrow">Reviewers · 评审小组</span>
+        <span className="eyebrow">Settings · 设置</span>
         <h1>评审角色</h1>
         <p className="muted">每个角色有自己的人物特质、关注点和依据。AI 评审时会用这个角色的口吻和视角挑问题；没配模型时，按关注点生成检查清单。</p>
       </header>
+      <SettingsTabs />
 
       <div className="role-grid">
         {store.roles.map((role) => (

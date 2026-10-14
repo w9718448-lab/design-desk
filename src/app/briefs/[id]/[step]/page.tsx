@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { completeStep, reopenStep } from "@/app/actions";
+import { completeStep, reopenStep, restoreBrief } from "@/app/actions";
 import { Submit } from "@/components/submit";
 import { BriefStep } from "@/components/steps/brief-step";
 import { IdeasStep } from "@/components/steps/ideas-step";
@@ -46,6 +46,14 @@ export default async function StepPage({ params }: { params: Promise<{ id: strin
         <h1>{steps[index].label}</h1>
         <p className="muted">{intro[key]}</p>
       </header>
+
+      {brief.deletedAt && (
+        <form action={restoreBrief} className="panel deleted-note">
+          <input type="hidden" name="id" value={brief.id} />
+          <span>这个项目已删除，只有在“历史项目”里能找到。</span>
+          <Submit className="button small">恢复项目</Submit>
+        </form>
+      )}
 
       {key !== "brief" && (
         <details className="panel brief-peek">

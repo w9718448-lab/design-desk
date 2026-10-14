@@ -13,7 +13,7 @@ export function BriefCard({ brief }: { brief: Brief }) {
     return (
       <div key={field.key} className={`brief-field status-${value.value ? value.status : "ask"}`}>
         <label htmlFor={`f-${field.key}`}>{field.label}</label>
-        <textarea id={`f-${field.key}`} name={`field-${field.key}`} defaultValue={value.value} rows={1} placeholder={field.hint} />
+        <textarea id={`f-${field.key}`} name={`field-${field.key}`} defaultValue={value.value} rows={Math.min(8, Math.max(1, Math.ceil(value.value.length / 46)))} placeholder={field.hint} />
         <select id={`s-${field.key}`} name={`status-${field.key}`} defaultValue={value.status === "ask" ? "inferred" : value.status} aria-label={`${field.label}确定程度`}>
           <option value="confirmed">{statusLabel.confirmed}</option>
           <option value="inferred">{statusLabel.inferred}</option>

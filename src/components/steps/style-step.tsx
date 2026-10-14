@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { runStyleMatch, toggleStyleRef } from "@/app/actions";
 import { StyleRefEditor } from "@/components/style-ref-editor";
+import { Icon } from "@/components/icons";
 import { Submit } from "@/components/submit";
 import { modelStatus } from "@/lib/ai";
 import { pickedPaths } from "@/lib/ideas";
@@ -25,7 +26,7 @@ export async function StyleStep({ store, brief }: { store: Store; brief: Brief }
             <h2>创意组合</h2>
             <small className="muted">来自上一步脑图里收藏的关键词</small>
           </div>
-          <Link className="link-button" href={`/briefs/${brief.id}/ideas`}>回脑图改</Link>
+          <Link className="icon-button" href={`/briefs/${brief.id}/ideas`} title="回脑图修改" aria-label="回脑图修改"><Icon name="branch" /></Link>
         </div>
         {keywords.length ? (
           <div className="chips big">{keywords.map((keyword) => <span key={keyword} className="chip glow">{keyword}</span>)}</div>

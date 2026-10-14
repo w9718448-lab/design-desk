@@ -2,6 +2,7 @@ import { FileThumb } from "@/components/file-thumb";
 import Link from "next/link";
 import { chooseFinal, decideFinding, deleteReview, findingToRule } from "@/app/actions";
 import { ReviewForm } from "@/components/review-form";
+import { Icon } from "@/components/icons";
 import { Submit } from "@/components/submit";
 import { modelStatus } from "@/lib/ai";
 import { severityLabel, type Brief, type Finding, type Review, type Store } from "@/lib/types";
@@ -51,7 +52,7 @@ export async function ReviewStep({ store, brief }: { store: Store; brief: Brief 
       <section className="panel feature">
         <div className="panel-head">
           <h2>发起评审</h2>
-          <Link className="link-button" href="/roles">编辑评审角色</Link>
+          <Link className="icon-button" href="/roles" title="编辑评审角色" aria-label="编辑评审角色"><Icon name="settings" /></Link>
         </div>
         {drafts.length === 0
           ? <p className="muted">还没有稿件。先到 <Link className="link-button" href={`/briefs/${brief.id}/draft`}>出稿</Link> 这一步放进一版。</p>
@@ -83,7 +84,7 @@ export async function ReviewStep({ store, brief }: { store: Store; brief: Brief 
                 )}
                 <form action={deleteReview}>
                   <input type="hidden" name="id" value={review.id} />
-                  <Submit className="link-button danger">删除这次评审</Submit>
+                  <Submit className="icon-button danger" title="删除这次评审"><Icon name="trash" /></Submit>
                 </form>
               </div>
             </div>

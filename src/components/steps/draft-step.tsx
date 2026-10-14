@@ -1,4 +1,7 @@
-import { deleteDraft, uploadDraft } from "@/app/actions";
+import { addDraftFromAsset, deleteDraft, toggleCardAsset, uploadDraft } from "@/app/actions";
+import { DesignCard, type CardImage } from "@/components/design-card";
+import { Icon } from "@/components/icons";
+import { pickedPaths } from "@/lib/ideas";
 import { CopyButton } from "@/components/copy-button";
 import { Submit } from "@/components/submit";
 import { Dropzone } from "@/components/dropzone";
@@ -10,8 +13,51 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
   const drafts = store.drafts.filter((draft) => draft.briefId === brief.id);
   const direction = directionText(brief, store);
   const prompt = promptText(brief, store);
+  const imageAssets = store.assets.filter((asset) => asset.kind === "image");
+  const assetById = new Map(store.assets.map((asset) => [asset.id, asset]));
+  const images: CardImage[] = [
+    ...brief.refs.filter((ref) => ref.kind === "image").map((ref) => ({ src: `/api/uploads/${ref.file}`, label: ref.name, tag: "固定" })),
+    ...brief.styleRefs.map((ref) => assetById.get(ref.assetId)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: `/api/assets/${asset!.file}`, label: asset!.name, tag: "风格" })),
+    ...brief.cardAssetIds.map((id) => assetById.get(id)).filter((asset) => asset?.kind === "image").map((asset) => ({ src: `/api/assets/${asset!.file}`, label: asset!.name, tag: "参考" })),
+  ].filter((item, index, list) => list.findIndex((other) => other.src === item.src) === index);
+  const short = (value: string, limit = 90) => (value.length > limit ? `${value.slice(0, limit)}…` : value);
+  const rows = (["background", "goal", "audience", "deliverables", "tone"] as const)
+    .filter((key) => brief.fields[key].value)
+    .map((key) => ({ label: { background: "项目背景", goal: "目标", audience: "受众", deliverables: "物料与尺寸", tone: "视觉调性" }[key], value: short(brief.fields[key].value) }));
+  const keywords = [...new Set(pickedPaths(brief.mindmap).map((path) => path[path.length - 1]))];
+  const concept = brief.mindmap.find((node) => !node.parentId)?.label || "";
   return (
     <>
+      <section className="panel feature">
+        <div className="panel-head">
+          <div className="panel-title">
+            <h2>设计卡片</h2>
+            <small className="muted">需求、创意组合和参考图汇成一张卡片。复制或下载后，拿去生图工具或设计软件里，照着卡片做。</small>
+          </div>
+        </div>
+        <DesignCard title={brief.title} concept={concept} keywords={keywords} rows={rows} images={images} prompt={prompt} fileName={brief.title.replace(/[\\/:*?"<>|\s]+/g, "")} />
+        <details className="card-picker">
+          <summary><Icon name="image" />从资产库添加参考图{brief.cardAssetIds.length ? `（已添加 ${brief.cardAssetIds.length} 张）` : ""}</summary>
+          {imageAssets.length === 0 ? <p className="muted">资产库里还没有图片。</p> : (
+            <div className="picker-grid">
+              {imageAssets.map((asset) => {
+                const on = brief.cardAssetIds.includes(asset.id);
+                return (
+                  <form key={asset.id} action={toggleCardAsset} className={`picker-item ${on ? "is-on" : ""}`}>
+                    <input type="hidden" name="id" value={brief.id} />
+                    <input type="hidden" name="assetId" value={asset.id} />
+                    <button type="submit" title={on ? `从卡片移除${asset.name}` : `把${asset.name}加进卡片`} aria-pressed={on}>
+                      <img src={`/api/assets/${asset.file}`} alt={asset.name} loading="lazy" />
+                      <span className="picker-mark"><Icon name={on ? "check" : "plus"} size={14} /></span>
+                    </button>
+                  </form>
+                );
+              })}
+            </div>
+          )}
+        </details>
+      </section>
+
       <div className="two-col even">
         <section className="panel">
           <div className="panel-head">
@@ -45,6 +91,16 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
             </label>
           </div>
         </Dropzone>
+        {store.assets.length > 0 && (
+          <form action={addDraftFromAsset} className="inline-form from-asset">
+            <input type="hidden" name="briefId" value={brief.id} />
+            <span className="muted">或者从资产库放一个进来：</span>
+            <select id="draft-from-asset" name="assetId" aria-label="从资产库选择">
+              {store.assets.map((asset) => <option key={asset.id} value={asset.id}>{asset.name}</option>)}
+            </select>
+            <Submit className="icon-button" title="放进稿件"><Icon name="plus" /></Submit>
+          </form>
+        )}
       </section>
 
       {drafts.length > 0 && (
@@ -57,7 +113,7 @@ export function DraftStep({ store, brief }: { store: Store; brief: Brief }) {
                 <small className="muted">{new Date(draft.createdAt).toLocaleString("zh-CN", { timeZone: "Asia/Shanghai", month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" })}{draft.note ? ` · ${draft.note}` : ""}</small>
                 <form action={deleteDraft}>
                   <input type="hidden" name="id" value={draft.id} />
-                  <Submit className="link-button danger">删除这一版</Submit>
+                  <Submit className="icon-button danger" title="删除这一版"><Icon name="trash" /></Submit>
                 </form>
               </div>
             </article>

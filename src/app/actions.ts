@@ -58,6 +58,54 @@ export async function addBackground(form: FormData) {
   refresh();
 }
 
+// 用全部背景重新识别一遍（例如识别规则升级后），同样不覆盖已确定的内容。
+export async function reparseBrief(form: FormData) {
+  const id = text(form, "id");
+  const brief = findBrief(readStore(), id);
+  if (!brief?.raw) return;
+  const extracted = await extractBrief(brief.raw);
+  await updateStore((store) => {
+    const target = findBrief(store, id);
+    if (!target) return;
+    target.fields = mergeFields(target.fields, extracted.fields);
+    touch(target);
+  });
+  refresh();
+}
+
+export async function uploadBriefRefs(_: UploadState, form: FormData): Promise<UploadState> {
+  const briefId = text(form, "briefId");
+  const files = form.getAll("files").filter((item): item is File => item instanceof File && item.size > 0);
+  if (!files.length) return { error: "先选择文件。" };
+  const bad = files.map((file) => fileError(file)).find(Boolean);
+  if (bad) return { error: bad };
+  for (const file of files) {
+    const saved = await saveFile(file, "uploads");
+    await updateStore((store) => {
+      const brief = findBrief(store, briefId);
+      if (!brief) return;
+      brief.refs.push({ id: newId("RF"), file: saved, name: file.name.replace(/\.[^.]+$/, ""), kind: kindOf(file.name), createdAt: now() });
+      touch(brief);
+    });
+  }
+  refresh();
+  return { message: `已固定 ${files.length} 个参考。` };
+}
+
+export async function deleteBriefRef(form: FormData) {
+  const id = text(form, "id");
+  const refId = text(form, "refId");
+  await updateStore((store) => {
+    const brief = findBrief(store, id);
+    const ref = brief?.refs.find((item) => item.id === refId);
+    if (!brief || !ref) return;
+    fs.rmSync(dataPath("uploads", ref.file), { force: true });
+    brief.refs = brief.refs.filter((item) => item.id !== refId);
+    touch(brief);
+  });
+  refresh();
+}
+
 export async function saveBriefCard(form: FormData) {
   const id = text(form, "id");
   await updateStore((store) => {
@@ -77,14 +125,34 @@ export async function saveBriefCard(form: FormData) {
 export async function deleteBrief(form: FormData) {
   const id = text(form, "id");
   await updateStore((store) => {
+    const brief = findBrief(store, id);
+    if (brief) brief.deletedAt = new Date().toISOString();
+  });
+  refresh();
+  redirect("/");
+}
+
+export async function restoreBrief(form: FormData) {
+  const id = text(form, "id");
+  await updateStore((store) => {
+    const brief = findBrief(store, id);
+    if (brief) delete brief.deletedAt;
+  });
+  refresh();
+}
+
+// 彻底删除：需求卡、脑图、稿件、评审都清掉，不能恢复。
+export async function purgeBrief(form: FormData) {
+  const id = text(form, "id");
+  await updateStore((store) => {
     // 已经存进资产库的终稿保留在资产库里。
     for (const draft of store.drafts.filter((item) => item.briefId === id)) fs.rmSync(dataPath("uploads", draft.image), { force: true });
+    for (const ref of findBrief(store, id)?.refs || []) fs.rmSync(dataPath("uploads", ref.file), { force: true });
     store.drafts = store.drafts.filter((item) => item.briefId !== id);
     store.reviews = store.reviews.filter((review) => review.briefId !== id);
     store.briefs = store.briefs.filter((brief) => brief.id !== id);
   });
   refresh();
-  redirect("/");
 }
 
 /* ---------- 步骤 ---------- */
@@ -309,6 +377,39 @@ export async function uploadDraft(_: UploadState, form: FormData): Promise<Uploa
   }
   refresh();
   return { message: files.length > 1 ? `已放进 ${files.length} 个文件。` : "已放进稿件。" };
+}
+
+export async function toggleCardAsset(form: FormData) {
+  const id = text(form, "id");
+  const assetId = text(form, "assetId");
+  await updateStore((store) => {
+    const brief = findBrief(store, id);
+    if (!brief || !store.assets.some((asset) => asset.id === assetId)) return;
+    brief.cardAssetIds = brief.cardAssetIds.includes(assetId) ? brief.cardAssetIds.filter((item) => item !== assetId) : [...brief.cardAssetIds, assetId];
+    touch(brief);
+  });
+  refresh();
+}
+
+// 资产库里已有的设计（比如在别处做好的稿子）也可以直接放进稿件，拿去评审。
+export async function addDraftFromAsset(form: FormData) {
+  const briefId = text(form, "briefId");
+  const assetId = text(form, "assetId");
+  const store = readStore();
+  const asset = store.assets.find((item) => item.id === assetId);
+  if (!asset || !findBrief(store, briefId)) return;
+  const ext = asset.file.split(".").pop();
+  const image = `${asset.kind === "image" ? "IMG" : "F"}-${newId("x").slice(2)}.${ext}`;
+  fs.mkdirSync(dataPath("uploads"), { recursive: true });
+  fs.copyFileSync(dataPath("assets", asset.file), dataPath("uploads", image));
+  await updateStore((current) => {
+    const brief = findBrief(current, briefId);
+    if (!brief) return;
+    const count = current.drafts.filter((item) => item.briefId === briefId).length;
+    current.drafts.unshift({ id: newId("D"), briefId, version: `第 ${count + 1} 版`, image, imageName: `${asset.name}.${ext}`, kind: asset.kind, note: "从资产库放入", createdAt: now() });
+    touch(brief);
+  });
+  refresh();
 }
 
 // 评审不一定全员满意：你可以直接把某一版定为终稿，跳到交付。

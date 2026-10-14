@@ -12,7 +12,7 @@ const themeScript = `try{var t=localStorage.getItem("dd-theme");if(t!=="dark"&&t
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   // 进行中的项目排前面，做完的排后面。
   const projects = readStore().briefs
-    .map((brief) => ({ id: brief.id, title: brief.title, done: brief.stepsDone, current: currentStep(brief), finished: stageOf(brief) === "完成" }))
+    .map((brief) => ({ deleted: Boolean(brief.deletedAt), id: brief.id, title: brief.title, done: brief.stepsDone, current: currentStep(brief), finished: stageOf(brief) === "完成" }))
     .sort((a, b) => Number(a.finished) - Number(b.finished));
   return (
     <html lang="zh-CN" data-theme="dark" suppressHydrationWarning>

@@ -1,3 +1,5 @@
+import { SettingsTabs } from "@/components/settings-tabs";
+import { ThemeToggle } from "@/components/theme-toggle";
 import { saveKey } from "@/app/actions";
 import { Submit } from "@/components/submit";
 import { modelStatus, providers } from "@/lib/ai";
@@ -11,10 +13,20 @@ export default async function SettingsPage() {
   return (
     <>
       <header className="page-head">
-        <span className="eyebrow">Settings · 模型与密钥</span>
-        <h1>模型与密钥</h1>
+        <span className="eyebrow">Settings · 设置</span>
+        <h1>外观与模型</h1>
         <p className="muted">不配置模型也能用：需求卡按本地规则整理，评审生成检查清单。配上千问后，能自动看图评审。</p>
       </header>
+      <SettingsTabs />
+      <section className="panel">
+        <div className="panel-head">
+          <div className="panel-title">
+            <h2>界面</h2>
+            <small className="muted">深色或浅色，选好后会记住。</small>
+          </div>
+          <div className="theme-slot"><ThemeToggle /></div>
+        </div>
+      </section>
       <section className="panel">
         <h2>模型</h2>
         <ul className="settings-list">

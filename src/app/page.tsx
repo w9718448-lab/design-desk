@@ -25,7 +25,7 @@ export default async function Home() {
 
       <section className="stage-board">
         {stages.map((stage, index) => {
-          const briefs = store.briefs.filter((brief) => stageOf(brief) === stage);
+          const briefs = store.briefs.filter((brief) => !brief.deletedAt && stageOf(brief) === stage);
           return (
             <div key={stage} className="stage-column">
               <h2><span className="eyebrow">{String(index + 1).padStart(2, "0")}</span>{stage}<span className="count">{briefs.length}</span></h2>
